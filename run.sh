@@ -5,12 +5,16 @@ set -eu
 bins=16
 w=8
 th=3
-search_range=10
+search_range=5
 quantile=5
 demosaic=""
-auto_quantile="manual"
+prec_lvl=1
+add_noise=""
+noise_a="0.1"
+noise_b="0.2"
+post_correction=""
 
-while getopts :b:w:t:s:q:d:a: option
+while getopts :b:w:t:s:q:d:p:N:A:B:c: option
 do 
     case "${option}" in
         b) bins=${OPTARG};;
@@ -29,17 +33,34 @@ do
                 exit 1
             fi
             ;;
-        a)  if [ ${OPTARG} = "auto" ]
+        p) prec_lvl=${OPTARG};;
+        N)  if [ ${OPTARG} = "True" ]
             then
-                auto_quantile="-auto_quantile"
-            elif [ ${OPTARG} = "manual" ]
+                add_noise="-add_noise"
+            elif [ ${OPTARG} = "False" ]
             then
-                auto_quantile=""
+                add_noise=""
             else
-                echo "Error: auto_quantile option should be True or False"
+                echo "Error: add_noise option should be True or False"
                 exit 1
             fi
             ;;
+        A) noise_a=${OPTARG};;
+        B) noise_b=${OPTARG};;
+        c) if [ ${OPTARG} = "True" ]
+            then
+                post_correction="-post_correction"
+            elif [ ${OPTARG} = "False" ]
+            then
+                post_correction=""
+            else
+                echo "Error: post_correction option should be True or False"
+                exit 1
+            fi
+            ;;
+            
+            
+        
     esac
 done
 
@@ -52,6 +73,9 @@ out_curve=${@:$OPTIND+2:1}
 # TEST in local env #
 #####################
 # main=./main.py
+# img_0="frame0.png"
+# img_1="frame1.png"
+# out_curve="curve.png"
 
 #####################
 #      IPOL env     #
@@ -61,14 +85,21 @@ main=$bin/neif/main.py
 #####################
 #   Main execution  #
 #####################
-python $main $img_0 $img_1 $out_curve \
+command="python $main $img_0 $img_1 $out_curve \
     -bins $bins \
-    -quantile $quantile \
+    -quantile $quantile  \
     -w $w \
     -th $th \
     -search_range $search_range \
-    $demosaic \
-    $auto_quantile
+    -prec_lvl $prec_lvl \
+    -noise_a $noise_a \
+    -noise_b $noise_b \
+    -post_correction $post_correction \
+    $add_noise \
+    $demosaic"
+
+echo $command
+$command
 
 
 # echo "Configuration done!"

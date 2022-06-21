@@ -3,8 +3,8 @@
 ## Usage
 
 ``` python
-from src.estimate import compute_noise_curve
-means, variances = compute_noise_curve(...)
+from src.estimate import estimate_noise_curve
+intensities, variances = estimate_noise_curve(...)
 ```
 
 

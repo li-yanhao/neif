@@ -18,127 +18,17 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 
+
 import numpy as np
 import matching as M
 
+from skimage.util import view_as_windows
 
-def compute_noise_curve_obsolete(img_raw_0, img_raw_1, bins=64, w=8, th=3, T=5, q=0.05, demosaic=True, search_range=3, num_div=16,
-                                 auto_quantile=False):
-    """ Calculate the noise curve from a difference image
-
-    Parameters
-    ----------
-    img_raw_0 : numpy.ndarray
-        Raw image at t, in size (H, W)
-    img_raw_1 : numpy.ndarray
-        Raw image at t+1, in size (H, W)
-    bins : int
-        Number of bins for partition
-    w : int
-        Block size
-    th : int
-        Thickness of bounding ring of each patch for matching
-    T : int
-        Threshold for entries associated to low frequencies,
-        coefficient at (i,j) when i+j<=T and i+j!=0 is considered as low frequency coefficient
-    q : float
-        Quantile of blocks with lowest low-frequency energies
-    demosaic : bool
-        A flag indicating if image needs demosaicing
-    search_range : int
-        Half of search range for patch matching. Note that the range of a squared search region window = search_range * 2 + 1
-    num_div : int
-        Number of divided areas of 360 degrees for gradient matching
-    auto_quantile : bool
-        Whether use fixed quantile of blocks or automatically choose the blocks with pure noise for estimation
-
-    Returns
-    ----------
-    (numpy.ndarray, numpy.ndarray)
-        [0]: Means of bins for 4 channels, in size (4, bins)
-        [1]: Variances (noise) of bins for 4 channels, in size (4, bins)
-    """
-
-    assert img_raw_0.shape == img_raw_1.shape
-
-    if demosaic:
-        H, W = img_raw_0.shape
-        channels = 4  # Only accept 4 channels so far
-
-        img_raw_0 = np.array([img_raw_0[::2, ::2], img_raw_0[::2, 1::2],
-                             img_raw_0[1::2, ::2], img_raw_0[1::2, 1::2]])
-        img_raw_1 = np.array([img_raw_1[::2, ::2], img_raw_1[::2, 1::2],
-                             img_raw_1[1::2, ::2], img_raw_1[1::2, 1::2]])
-    else:
-        if np.ndim(img_raw_0) == 2:
-            # channels = 1
-            img_raw_0 = img_raw_0[None, ...]
-            img_raw_1 = img_raw_1[None, ...]
-        else:  # == 3
-            img_raw_0 = np.transpose(img_raw_0, (-1, 0, 1))
-            img_raw_1 = np.transpose(img_raw_1, (-1, 0, 1))
-        channels, H, W = img_raw_0.shape
-
-    means_of_bins_all_channels = np.zeros((channels, bins))
-    variances_of_bins_all_channels = np.zeros((channels, bins))
-
-    for channel in range(channels):
-
-        img_0_one_channel = img_raw_0[channel]
-        img_1_one_channel = img_raw_1[channel]
-
-        img_0_blocks, img_1_blocks = patch_match(
-            img_0_one_channel, img_1_one_channel, w, th, search_range, num_div)
-
-        # remove saturated blocks
-        max_val = np.max([np.max(img_0_one_channel),
-                         np.max(img_1_one_channel)])
-        non_saturated_bitmap_0 = np.all(img_0_blocks < max_val, axis=(-2, -1))
-        non_saturated_bitmap_1 = np.all(img_1_blocks < max_val, axis=(-2, -1))
-        non_saturated_bitmap = non_saturated_bitmap_0 & non_saturated_bitmap_1
-
-        img_0_blocks = img_0_blocks[non_saturated_bitmap]
-        img_1_blocks = img_1_blocks[non_saturated_bitmap]
-
-        # diff_blocks = img_0_blocks - img_1_blocks
-
-        means = np.mean((img_0_blocks + img_1_blocks) / 2, axis=(-2, -1))
-
-        diff_blocks = (img_0_blocks - img_1_blocks).reshape(-1, w, w)
-
-        indices_of_means = np.argsort(means)
-
-        # drop means with too high values
-        indices_of_means = indices_of_means[: len(
-            indices_of_means) // bins * bins]
-
-        means_sorted = means[indices_of_means]
-        diff_blocks_sorted = diff_blocks[indices_of_means]
-
-        diff_blocks_in_bins = diff_blocks_sorted.reshape(bins, -1, w, w)
-        means_of_bins = means_sorted.reshape(bins, -1).mean(axis=-1)
-
-        variances_of_bins = np.zeros((bins))
-
-        # TODO: process all the bins in parallel
-        for bin in range(bins):
-            blocks_one_bin = diff_blocks_in_bins[bin]
-
-            if auto_quantile:
-                sigma = estimate_noise_iterative(blocks_one_bin, w, T)
-            else:
-                sigma = estimate_noise(blocks_one_bin, w, T, q)
-
-            # the variance here contains double noise, should be divided by 2
-            variances_of_bins[bin] = sigma * sigma / 2
-
-        means_of_bins_all_channels[channel] = means_of_bins
-        variances_of_bins_all_channels[channel] = variances_of_bins
-
-    return means_of_bins_all_channels, variances_of_bins_all_channels
+# debug
+from datetime import datetime
 
 
-def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, prec_level=2):
+def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=2, post_correction:bool=True):
     """ Integrated pipeline: estimate noise curve from two successive images
         (See algo. 10 of sec. 5.6 in the paper)
 
@@ -163,9 +53,9 @@ def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, pre
         Note that the range of a squared search region window = search_range * 2 + 1
     num_div : int
         Number of divided areas of 360 degrees for gradient matching
-    prec_level: int
-        Subpixel precision = (1/2)^prec_level
-        e.g. prec_level=3 leads to subpixel precision at 0.125 px
+    prec_lvl: int
+        Subpixel precision = (1/2)^prec_lvl
+        e.g. prec_lvl=3 leads to subpixel precision at 0.125 px
     Returns
     -------
     intensities: np.ndarray
@@ -181,22 +71,48 @@ def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, pre
     intensities = np.zeros((C, bins))
     variances = np.zeros((C, bins))
 
+
     for ch in range(C):
         img_ref_chnl = img_ref[ch].astype(np.int32)
         img_mov_chnl = img_mov[ch].astype(np.int32)
-        pos_ref, pos_mov = M.pixel_match(img_ref_chnl, img_mov_chnl, w, th, s, num_div)
+        print(f"pixel_match at {datetime.now()}")
+        pos_ref, pos_mov = M.pixel_match(img_ref_chnl, img_mov_chnl, w, th, s)
 
-        # print("M.pixel_match()")
+        pos_ref, pos_mov = M.remove_saturated(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w)
+        print(f"remove_saturated at {datetime.now()}")
 
-        pos_ref_in_bins, pos_mov_in_bins = M.partition(img_ref_chnl, img_ref_chnl, pos_ref, pos_mov, w, bins)
+        # DEBUG: remove blocks near the borders so that subpixel matching can work: OK
+        border = 2
+        mask = (pos_mov[:, 0] >= border + th) & (pos_mov[:, 0] < H - w + 1 - th - border) \
+            & (pos_mov[:, 1] >= border + th) & (pos_mov[:, 1] < W - w + 1 - th - border)
+        pos_ref = pos_ref[mask]
+        pos_mov = pos_mov[mask]
+        # return pos_ref, pos_mov
+        
+        # blks_ref = view_as_windows(img_ref_chnl, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]]
+        # blks_mov = view_as_windows(img_mov_chnl, (w, w), step=(1, 1))[pos_mov[:, 0], pos_mov[:, 1]]
+        # return pos_ref, pos_mov
+
+        
+        # intensities = M.partition(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
+        # return intensities, None
+
+        # DEBUG: OK
+        pos_ref_in_bins, pos_mov_in_bins = M.partition(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
+        # return pos_ref_in_bins, pos_mov_in_bins
+
+        print(pos_ref_in_bins.shape)
         # print("M.partition()")
         pos_ref_filtered_in_bins = []
         pos_mov_filtered_in_bins = []
+
+
+        print(f"filter_position_pairs at {datetime.now()}")
         for b in range(bins):
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
-
-            pos_ref_filtered, pos_mov_filtered = M.filter_position_pairs(img_ref_chnl, img_ref_chnl, pos_ref, pos_mov, w, T, 3 * q)
+            
+            pos_ref_filtered, pos_mov_filtered = M.filter_position_pairs(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, T, 3 * q)
             
             pos_ref_filtered_in_bins.append(pos_ref_filtered)
             pos_mov_filtered_in_bins.append(pos_mov_filtered)
@@ -204,13 +120,40 @@ def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, pre
         # Merge the pairs together so that they are processed at once in subpixel matching
         pos_ref_filtered_in_bins = np.vstack(pos_ref_filtered_in_bins)
         pos_mov_filtered_in_bins = np.vstack(pos_mov_filtered_in_bins)
-
-        # print(pos_ref_filtered_in_bins.shape)
-        # print(pos_mov_filtered_in_bins.shape)
-
-        blks_ref_in_bins, blks_mov_in_bins = M.subpixel_match(img_ref_chnl, img_mov_chnl, pos_ref_filtered_in_bins, pos_mov_filtered_in_bins, \
-                                              w, th, num_iter=prec_level)
         
+        # DEBUG: OK, but order is different. If compare with old version, pls uncomment this block.
+        # idx_sorted = np.argsort(pos_ref_filtered_in_bins[:, 0] * 1000 + pos_ref_filtered_in_bins[:, 1])
+        # pos_ref_filtered_in_bins = pos_ref_filtered_in_bins[idx_sorted]
+        # pos_mov_filtered_in_bins = pos_mov_filtered_in_bins[idx_sorted]
+
+        # print(f"pos_ref_filtered_in_bins {pos_ref_filtered_in_bins.shape}")
+        # print(f"pos_mov_filtered_in_bins {pos_mov_filtered_in_bins.shape}")
+        # return pos_ref_filtered_in_bins, pos_mov_filtered_in_bins
+
+        print(f"subpixel_match at {datetime.now()}")
+        if prec_lvl > 0:
+            blks_ref_in_bins, blks_mov_in_bins = M.subpixel_match(
+                    img_ref_chnl, img_mov_chnl, pos_ref_filtered_in_bins, pos_mov_filtered_in_bins, \
+                    w, th, num_iter=prec_lvl)
+        elif prec_lvl == 0:
+            blks_ref = view_as_windows(img_ref_chnl, (w,w), step=(1,1))
+            blks_mov = view_as_windows(img_mov_chnl, (w,w), step=(1,1))
+            blks_ref_in_bins = blks_ref[pos_ref_filtered_in_bins[:, 0], pos_ref_filtered_in_bins[:, 1]]
+            blks_mov_in_bins = blks_mov[pos_mov_filtered_in_bins[:, 0], pos_mov_filtered_in_bins[:, 1]]
+            blks_ref_in_bins = blks_ref_in_bins.astype(np.float32)
+            blks_mov_in_bins = blks_mov_in_bins.astype(np.float32)
+
+        else:
+            raise Exception("prec_lvl should be 0 or positive")
+
+        
+        # DEBUG: compare, OK
+        # Reason: I used float16 for subpixel matching, which was not accurate
+        # Now both old and new implementations use float32, and output the same results.
+        # print(f"pos_ref_filtered_in_bins {pos_ref_filtered_in_bins.shape}")
+        # print(f"pos_mov_filtered_in_bins {pos_mov_filtered_in_bins.shape}")
+        # return blks_ref_in_bins, blks_mov_in_bins
+
         # print("blks_ref_in_bins", blks_ref_in_bins.shape)
         # print("blks_mov_in_bins", blks_mov_in_bins.shape)
         
@@ -218,13 +161,12 @@ def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, pre
         blks_ref_in_bins = blks_ref_in_bins[:int(len(blks_ref_in_bins) // bins * bins)].reshape(bins, -1, w, w)
         blks_mov_in_bins = blks_mov_in_bins[:int(len(blks_mov_in_bins) // bins * bins)].reshape(bins, -1, w, w)
 
+        print(f"compute_variance_from_pairs at {datetime.now()}")
         for b in range(bins):
             blks_ref = blks_ref_in_bins[b]
             blks_mov = blks_mov_in_bins[b]
 
-            intensity = (np.mean(blks_ref) + np.mean(blks_mov)) / 2
-            intensities[ch, b] = intensity
-
+            
             # TODO: Add to IPOL paper
             # filter_block_pairs need real blocks as input, but not img + block positions
 
@@ -232,7 +174,29 @@ def estimate_noise_curve(img_ref, img_mov, w, T, th, q, bins, s, num_div=16, pre
             variance = M.compute_variance_from_pairs(blks_ref_filtered, blks_mov_filtered, T)
             variances[ch, b] = variance
 
-        print("intensities:", intensities)
-        print("variances:", variances)
+            intensity = (np.mean(blks_ref_filtered) + np.mean(blks_mov_filtered)) / 2
+            intensities[ch, b] = intensity
+
+
+        print(f"post_correction at {datetime.now()}")
+        if post_correction==True:
+            for _ in range(3):
+                for b in range(bins):
+                    blks_ref = blks_ref_in_bins[b]
+                    blks_mov = blks_mov_in_bins[b]
+                    
+                    # TODO: Add to IPOL paper: post correction
+
+                    blks_ref_filtered, blks_mov_filtered = M.filter_block_pairs_with_curve(blks_ref, blks_mov, T, 1/3, intensities[ch], variances[ch])
+                    variance = M.compute_variance_from_pairs(blks_ref_filtered, blks_mov_filtered, T)
+                    variances[ch, b] = variance
+
+                    intensity = (np.mean(blks_ref_filtered) + np.mean(blks_mov_filtered)) / 2
+                    intensities[ch, b] = intensity
+
+        # print("intensities:", intensities)
+        # print("variances:", variances)
+
+    print(f"end at {datetime.now()}")
 
     return intensities, variances
