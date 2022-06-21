@@ -65,7 +65,7 @@ void free_2d_float(float **m, size_t n1, size_t n2) {
  * -------
  * @ pos_mov_final: Matched block positions in the moving image, of size (N, 2)
  */
-void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
+void find_best_matching_sparse(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
                         int w, int th, int step, uint16_t *pos_mov_final) {
   // printf("H, W, N: %d, %d, %d \n", H, W, N);
 
@@ -147,7 +147,7 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
 
 
 
-void find_best_matching_full(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
+void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
                         int w, int th, uint16_t *pos_mov_final) {
   // printf("H, W, N: %d, %d, %d \n", H, W, N);
 
