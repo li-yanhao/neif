@@ -773,8 +773,8 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
 
     
-    # blocks_mov = blocks_mov[:,:, :,0,0,0]
-    blocks_mov = blocks_mov[:,:, :,0, 2**(num_iter-1), 2**(num_iter-1)]
+    blocks_mov = blocks_mov[:,:, :,0,0,0]
+    # blocks_mov = blocks_mov[:,:, :,0, 2**(num_iter-1), 2**(num_iter-1)] # Work badly
 
     # blocks_mov = blocks_mov[:, th:(w+th), th:(w+th)]
 
