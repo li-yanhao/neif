@@ -756,10 +756,15 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
         from datetime import datetime
         print(f"find_best_matching_func begins at {datetime.now()}")
         pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up)
+        
         print(f"find_best_matching_func ends at {datetime.now()}")
 
     sz_patch_up = sz_patch * (2 ** num_iter)
+
     img_split_mov = view_as_windows(img_ups_mov, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
+    blocks_mov = img_split_mov[pos_mov_up[:, 0], pos_mov_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
+    blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
+    blocks_mov = blocks_mov[:,:, :,0,0,0]
 
 
     # pos_mov_final = pos_mov_init
@@ -769,11 +774,8 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     # print("i max", pos_mov_up[:, 0].max())
     # print("j max", pos_mov_up[:, 1].max())
 
-    blocks_mov = img_split_mov[pos_mov_up[:, 0], pos_mov_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
-    blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
 
     
-    blocks_mov = blocks_mov[:,:, :,0,0,0]
     # blocks_mov = blocks_mov[:,:, :,0, 2**(num_iter-1), 2**(num_iter-1)] # Work badly
 
     # blocks_mov = blocks_mov[:, th:(w+th), th:(w+th)]
@@ -781,8 +783,17 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     # DEBUG use
     # pos_mov_final = pos_mov_up / 2**(num_iter)
 
-    blocks_ref = view_as_windows(img_ref, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
+    # origin version
+    # blocks_ref = view_as_windows(img_ref, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
     
+    # dev version
+    img_split_ref = view_as_windows(img_ups_ref, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
+    blocks_ref = img_split_ref[pos_ref_up[:, 0], pos_ref_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
+    blocks_ref = view_as_blocks(blocks_ref, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
+    blocks_ref = blocks_ref[:,:, :,0,0,0]
+
+
+
     # DEBUG use
     # return pos_ref, pos_mov_final, blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
 
