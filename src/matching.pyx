@@ -755,7 +755,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 
         from datetime import datetime
         print(f"find_best_matching_func begins at {datetime.now()}")
-        pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up)
+        pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up + 2**iter, th_up - 2**iter)
         
         print(f"find_best_matching_func ends at {datetime.now()}")
 
