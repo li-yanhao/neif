@@ -82,12 +82,13 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
 
   const int range = ups_factor - 1; // search range
 
+
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < N; ++i) {1
+  for (int i = 0; i < N; ++i) {
     // float** scores = alloc_2d_float(range, range);
-    float* scores = alloc_1d_float(range * range);
+    float* scores = alloc_1d_float((range * 2 + 1) * (range * 2 + 1));
     // float scores[9];
 
     // N.B.: (r_ref,c_ref) is the top-left coordinate of
@@ -109,29 +110,29 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
         const int c_mov = c_mov_init + c_sft;
 
         float ssd = 0;
-        for (int ii = 0; ii < th; ii += step) {
-          for (int jj = 0; jj < w + 2 * th; jj += step) {
+        for (int ii = 0; ii < th; ii += ups_factor) {
+          for (int jj = 0; jj < w + 2 * th; jj += ups_factor) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             ssd += dif * dif;
           }
         }
 
-        for (int ii = th; ii < th + w; ii += step) {
-          for (int jj = 0; jj < th; jj+= step) {
+        for (int ii = th; ii < th + w; ii += ups_factor) {
+          for (int jj = 0; jj < th; jj+= ups_factor) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             ssd += dif * dif;
           }
         }
 
-        for (int ii = th; ii < th + w; ii += step) {
-          for (int jj = w + th; jj < w + 2 * th; jj += step) {
+        for (int ii = th; ii < th + w; ii += ups_factor) {
+          for (int jj = w + th; jj < w + 2 * th; jj += ups_factor) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             ssd += dif * dif;
           }
         }
 
-        for (int ii = w + th; ii < w + 2 * th; ii += step) {
-          for (int jj = 0; jj < w + 2 * th; jj += step) {
+        for (int ii = w + th; ii < w + 2 * th; ii += ups_factor) {
+          for (int jj = 0; jj < w + 2 * th; jj += ups_factor) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             ssd += dif * dif;
           }
@@ -169,6 +170,8 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
     // the inner blocks inside their the surrounding rings
     pos_mov_final[i * 2] = r_mov_init + th + r_sft;
     pos_mov_final[i * 2 + 1] = c_mov_init + th + c_sft;
+
+    free(scores);
   }
 }
 
@@ -203,52 +206,32 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
         const int c_mov = c_mov_init + c_sft;
 
         float sad = 0;
-<<<<<<< HEAD
-        for (int ii = 0; ii < th; ++ii) { // change here th-1
-          for (int jj = 0; jj < w + 2 * th; ++jj) {
-=======
         for (int ii = 0; ii < th; ii += ups_factor) {
           for (int jj = 0; jj < w + 2 * th; jj += ups_factor) {
->>>>>>> 7ef00f2d17f5b37d528ae774f63a774c60ffc8c6
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;
           }
         }
 
-<<<<<<< HEAD
-        for (int ii = w + th; ii < w + 2 * th; ++ii) { // change here w + th + 1
-          for (int jj = 0; jj < w + 2 * th; ++jj) {
-=======
         for (int ii = w + th; ii < w + 2 * th; ii += ups_factor) {
           for (int jj = 0; jj < w + 2 * th; jj += ups_factor) {
->>>>>>> 7ef00f2d17f5b37d528ae774f63a774c60ffc8c6
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;
           }
         }
 
-<<<<<<< HEAD
-        for (int ii = th; ii < th + w; ++ii) {
-          for (int jj = 0; jj < th; ++jj) { // change here th-1
-=======
         for (int ii = th; ii < th + w; ii += ups_factor) {
           for (int jj = 0; jj < th; jj += ups_factor) {
->>>>>>> 7ef00f2d17f5b37d528ae774f63a774c60ffc8c6
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;
           }
         }
 
-<<<<<<< HEAD
-        for (int ii = th; ii < th + w; ++ii) {
-          for (int jj = w + th; jj < w + 2 * th; ++jj) { // change here w + th + 1
-=======
         for (int ii = th; ii < th + w; ii += ups_factor) {
           for (int jj = w + th; jj < w + 2 * th; jj += ups_factor) {
->>>>>>> 7ef00f2d17f5b37d528ae774f63a774c60ffc8c6
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;

@@ -10,7 +10,7 @@ quantile=5
 demosaic=""
 prec_lvl=3
 add_noise=""
-noise_a="0.1"
+noise_a="0.2"
 noise_b="0.2"
 post_correction=""
 
@@ -72,15 +72,15 @@ out_curve=${@:$OPTIND+2:1}
 #####################
 # TEST in local env #
 #####################
-# main=./main.py
-# img_0="frame0.png"
-# img_1="frame1.png"
-# out_curve="curve.png"
+main=./main.py
+img_0="frame0.png"
+img_1="frame1.png"
+out_curve="curve.png"
 
 #####################
 #      IPOL env     #
 #####################
-main=$bin/neif/main.py
+# main=$bin/neif/main.py
 
 #####################
 #   Main execution  #

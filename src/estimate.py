@@ -51,11 +51,11 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
     s: int
         Half of search range for patch matching
         Note that the range of a squared search region window = search_range * 2 + 1
-    num_div : int
-        Number of divided areas of 360 degrees for gradient matching
     prec_lvl: int
         Subpixel precision = (1/2)^prec_lvl
         e.g. prec_lvl=3 leads to subpixel precision at 0.125 px
+    post_correction: bool
+        Flag to activate post correction
     Returns
     -------
     intensities: np.ndarray

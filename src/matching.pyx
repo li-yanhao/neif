@@ -623,7 +623,7 @@ def find_best_matching_func(
     cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_mov = np.zeros((N, 2), dtype=np.uint16)
 
     # find_best_matching / find_best_matching_one_shot
-    find_best_matching(<float*> np.PyArray_DATA(img_ref),
+    find_best_matching_one_shot(<float*> np.PyArray_DATA(img_ref),
                        <float*> np.PyArray_DATA(img_mov),
                        <np.uint16_t*> np.PyArray_DATA(pos_ref),
                        <np.uint16_t*> np.PyArray_DATA(pos_mov_init),
@@ -716,7 +716,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 
     sz_patch = w + 2 * th
 
-    sz_patch_iter = sz_patch
+    # sz_patch_iter = sz_patch
     w_up = w
     th_up = th
 
@@ -733,37 +733,69 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     pos_ref_up = pos_ref.copy()
     pos_mov_up = pos_mov_init[valid_mask]
 
+    # Start matching
+    ups_factor = 2 ** num_iter
+    img_ups_ref = upsample_image(img_ref, ups_factor)
+    img_ups_mov = upsample_image(img_mov, ups_factor)
 
-    for iter in range(num_iter):
-        # 1. upsampling
-        ups_factor = 2 ** (iter+1)
-        img_ups_ref = upsample_image(img_ref, ups_factor)
-        img_ups_mov = upsample_image(img_mov, ups_factor)
+    # print(f"img_ups_mov\n", img_ups_mov)
+    
+    pos_ref_up = pos_ref_up * ups_factor
+    pos_mov_up = pos_mov_up * ups_factor
 
-        # print(f"img_ups_mov\n", img_ups_mov)
+    sz_patch_up = sz_patch * ups_factor
+    w_up = w * ups_factor
+    th_up = th * ups_factor
+
+    # C function requires c-contiguous array
+    if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
+        img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
+    if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
+        img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
+    if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
+        pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
+    if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
+        pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
+
+    from datetime import datetime
+    print(f"find_best_matching_func begins at {datetime.now()}")
+    pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
+    
+    print(f"find_best_matching_func ends at {datetime.now()}")
+
+
+
+
+    # for iter in range(num_iter):
+    #     # 1. upsampling
+    #     ups_factor = 2 ** (iter+1)
+    #     img_ups_ref = upsample_image(img_ref, ups_factor)
+    #     img_ups_mov = upsample_image(img_mov, ups_factor)
+
+    #     # print(f"img_ups_mov\n", img_ups_mov)
         
-        pos_ref_up = 2 * pos_ref_up
-        pos_mov_up = 2 * pos_mov_up
+    #     pos_ref_up = 2 * pos_ref_up
+    #     pos_mov_up = 2 * pos_mov_up
 
-        sz_patch_iter = 2 * sz_patch_iter
-        w_up = 2 * w_up
-        th_up = 2 * th_up
+    #     sz_patch_iter = 2 * sz_patch_iter
+    #     w_up = 2 * w_up
+    #     th_up = 2 * th_up
 
-        # C function requires c-contiguous array
-        if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
-            img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
-        if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
-            img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
-        if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
-            pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
-        if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
-            pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
+    #     # C function requires c-contiguous array
+    #     if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
+    #         img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
+    #     if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
+    #         img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
+    #     if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
+    #         pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
+    #     if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
+    #         pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
 
-        from datetime import datetime
-        print(f"find_best_matching_func begins at {datetime.now()}")
-        pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
+    #     from datetime import datetime
+    #     print(f"find_best_matching_func begins at {datetime.now()}")
+    #     pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
         
-        print(f"find_best_matching_func ends at {datetime.now()}")
+    #     print(f"find_best_matching_func ends at {datetime.now()}")
 
     sz_patch_up = sz_patch * (2 ** num_iter)
 
