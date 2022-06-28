@@ -176,7 +176,7 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
         const int c_mov = c_mov_init + c_sft;
 
         float sad = 0;
-        for (int ii = 0; ii < th-1; ++ii) { // change here th-1
+        for (int ii = 0; ii < th; ++ii) { // change here th-1
           for (int jj = 0; jj < w + 2 * th; ++jj) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
@@ -184,7 +184,7 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
           }
         }
 
-        for (int ii = w + th + 1; ii < w + 2 * th; ++ii) { // change here w + th + 1
+        for (int ii = w + th; ii < w + 2 * th; ++ii) { // change here w + th + 1
           for (int jj = 0; jj < w + 2 * th; ++jj) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
@@ -193,7 +193,7 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
         }
 
         for (int ii = th; ii < th + w; ++ii) {
-          for (int jj = 0; jj < th-1; ++jj) { // change here th-1
+          for (int jj = 0; jj < th; ++jj) { // change here th-1
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;
@@ -201,7 +201,7 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
         }
 
         for (int ii = th; ii < th + w; ++ii) {
-          for (int jj = w + th + 1; jj < w + 2 * th; ++jj) { // change here w + th + 1
+          for (int jj = w + th; jj < w + 2 * th; ++jj) { // change here w + th + 1
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             // sad += dif > 0 ? dif : -dif;
             sad += dif * dif;
