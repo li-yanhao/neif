@@ -601,7 +601,12 @@ np.import_array()
 cdef extern from "helper.h":
     void find_best_matching(
             float *img_ref, float *img_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
-            int H, int W, int N, int w, int th, np.uint16_t *pos_mov_final)
+            int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
+
+    void find_best_matching_one_shot(
+            float *img_ref, float *img_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
+            int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -610,19 +615,20 @@ def find_best_matching_func(
         np.ndarray[float, ndim=2, mode="c"] img_mov not None,
         np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_ref not None,
         np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_mov_init not None,
-        int w, int th
+        int w, int th, int ups_factor
     ):
     """ Wrap C interface into python interface """
 
     cdef int N = pos_ref.shape[0]
     cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_mov = np.zeros((N, 2), dtype=np.uint16)
 
+    # find_best_matching / find_best_matching_one_shot
     find_best_matching(<float*> np.PyArray_DATA(img_ref),
                        <float*> np.PyArray_DATA(img_mov),
                        <np.uint16_t*> np.PyArray_DATA(pos_ref),
                        <np.uint16_t*> np.PyArray_DATA(pos_mov_init),
                        img_ref.shape[0], img_ref.shape[1],
-                       N, w, th,
+                       N, w, th, ups_factor,
                        <np.uint16_t*> np.PyArray_DATA(pos_mov))
 
     return pos_mov
@@ -755,7 +761,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 
         from datetime import datetime
         print(f"find_best_matching_func begins at {datetime.now()}")
-        pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up + 2**iter, th_up - 2**iter)
+        pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
         
         print(f"find_best_matching_func ends at {datetime.now()}")
 
