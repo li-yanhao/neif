@@ -101,8 +101,8 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
         pos_ref_in_bins, pos_mov_in_bins = M.partition(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
         # return pos_ref_in_bins, pos_mov_in_bins
 
-        print(pos_ref_in_bins.shape)
-        # print("M.partition()")
+        # print(pos_ref_in_bins.shape)
+
         pos_ref_filtered_in_bins = []
         pos_mov_filtered_in_bins = []
 

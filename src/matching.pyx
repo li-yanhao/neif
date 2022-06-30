@@ -802,7 +802,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     img_split_mov = view_as_windows(img_ups_mov, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
     blocks_mov = img_split_mov[pos_mov_up[:, 0], pos_mov_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
     blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
-    blocks_mov = blocks_mov[:,:, :,0,0,0]
+    blocks_mov = blocks_mov[:,:,:,0,0,0]
 
 
     # pos_mov_final = pos_mov_init
@@ -828,7 +828,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     img_split_ref = view_as_windows(img_ups_ref, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
     blocks_ref = img_split_ref[pos_ref_up[:, 0], pos_ref_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
     blocks_ref = view_as_blocks(blocks_ref, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
-    blocks_ref = blocks_ref[:,:, :,0,0,0]
+    blocks_ref = blocks_ref[:,:,:,0,0,0]
 
 
 

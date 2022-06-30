@@ -8,21 +8,20 @@
 #include <omp.h>
 #endif
 
+
 // https://whu-pzhang.github.io/dynamic-allocate-2d-array/
 
-
+// allocate a 1D float matrix
 float *alloc_1d_float(size_t n1)
-// allocate a 2D ddouble matrix
 {
   float *m;
-  // allocate pointers to rows (m is actually a pointer to an array)  
   if ((m = (float *)malloc(n1 * sizeof(float))) == NULL) return NULL;
 
   return m;
 }
 
+// allocate a 2D double matrix
 double **alloc_2d_double(size_t n1, size_t n2)
-// allocate a 2D ddouble matrix
 {
   double **m;
   // allocate pointers to rows (m is actually a pointer to an array)
@@ -34,8 +33,8 @@ double **alloc_2d_double(size_t n1, size_t n2)
   return m;
 }
 
+// allocate a 2D float matrix
 float **alloc_2d_float(size_t n1, size_t n2)
-// allocate a 2D ddouble matrix
 {
   float **m;
   // allocate pointers to rows (m is actually a pointer to an array)
@@ -46,6 +45,7 @@ float **alloc_2d_float(size_t n1, size_t n2)
 
   return m;
 }
+
 
 void free_2d_double(double **m, size_t n1, size_t n2) {
   free(m[0]);
@@ -76,20 +76,18 @@ void free_2d_float(float **m, size_t n1, size_t n2) {
  * -------
  * @ pos_mov_final: Matched block positions in the moving image, of size (N, 2)
  */
-void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
-                        int w, int th, int ups_factor, uint16_t *pos_mov_final) {
+void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H,
+                                 int W, int N, int w, int th, int ups_factor, uint16_t *pos_mov_final) {
   // printf("H, W, N: %d, %d, %d \n", H, W, N);
 
-  const int range = ups_factor - 1; // search range
-
+  const int range = ups_factor - 1;  // search range
 
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
   for (int i = 0; i < N; ++i) {
-    // float** scores = alloc_2d_float(range, range);
-    float* scores = alloc_1d_float((range * 2 + 1) * (range * 2 + 1));
-    // float scores[9];
+    
+    float *scores = alloc_1d_float((range * 2 + 1) * (range * 2 + 1));
 
     // N.B.: (r_ref,c_ref) is the top-left coordinate of
     // the outer block containing the surrounding ring
@@ -118,7 +116,7 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
         }
 
         for (int ii = th; ii < th + w; ii += ups_factor) {
-          for (int jj = 0; jj < th; jj+= ups_factor) {
+          for (int jj = 0; jj < th; jj += ups_factor) {
             float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_mov[(r_mov + ii) * W + c_mov + jj];
             ssd += dif * dif;
           }
@@ -142,18 +140,6 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
       }
     }
 
-    // float min_score = scores[0][0];
-    // int best_r_sft = 0;
-    // int best_c_sft = 0;
-    // for (int r_sft = -range; r_sft <= range; ++r_sft) {
-    //   for (int c_sft = -range; c_sft <= range; ++c_sft) {
-    //     if (min_score > scores[r_sft + range][c_sft + range]) {
-    //       min_score = scores[r_sft + range][c_sft + range];
-
-    //     }
-    //   }
-    // }
-
     float min_score = scores[0];
     int best_sft_idx = 0;
     for (sft_idx = 0; sft_idx < (range * 2 + 1) * (range * 2 + 1); ++sft_idx) {
@@ -163,18 +149,17 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
       }
     }
 
-    int r_sft = best_sft_idx / (range * 2 + 1) - 1;
-    int c_sft = best_sft_idx % (range * 2 + 1) - 1;
+    int r_sft = best_sft_idx / (range * 2 + 1) - range;
+    int c_sft = best_sft_idx % (range * 2 + 1) - range;
 
     // Output block positions are top-left coordinates of
     // the inner blocks inside their the surrounding rings
-    pos_mov_final[i * 2] = r_mov_init + th + r_sft;
-    pos_mov_final[i * 2 + 1] = c_mov_init + th + c_sft;
+    pos_mov_final[i * 2] = pos_mov_init[i * 2] + r_sft;
+    pos_mov_final[i * 2 + 1] = pos_mov_init[i * 2 + 1] + c_sft;
 
     free(scores);
   }
 }
-
 
 
 void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,
@@ -237,8 +222,6 @@ void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint1
             sad += dif * dif;
           }
         }
-
-        
 
         scores[sft_idx++] = sad;
       }
