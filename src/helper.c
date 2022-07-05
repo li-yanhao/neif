@@ -57,6 +57,7 @@ void free_2d_float(float **m, size_t n1, size_t n2) {
   free(m);
 }
 
+
 /**
  * Find the best matching positions in the moving frame with subpixel precision.
  *
@@ -76,6 +77,7 @@ void free_2d_float(float **m, size_t n1, size_t n2) {
  * -------
  * @ pos_mov_final: Matched block positions in the moving image, of size (N, 2)
  */
+/*
 void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H,
                                  int W, int N, int w, int th, int ups_factor, uint16_t *pos_mov_final) {
   // printf("H, W, N: %d, %d, %d \n", H, W, N);
@@ -159,7 +161,123 @@ void find_best_matching_one_shot(float *img_ref, float *img_mov, uint16_t *pos_r
 
     free(scores);
   }
+} */
+
+
+inline float abs_float(float x)
+{
+  return x >= 0 ? x : -x;
 }
+
+/**
+ * Find the best matching positions in the moving frame with subpixel precision.
+ *
+ * Parameters
+ * ----------
+ * @ img_ref: Reference image, of size (H, W)
+ * @ img_ups_mov: Moving image, of size (H*ups_factor, W*ups_factor)
+ * @ pos_ref: Positions of w*w blocks in the reference image, of size (N, 2)
+ * @ pos_mov_init: Positions of w*w blocks in the upsampled moving image from initial matching, of size (N, 2)
+ * @ H: Image height (non upsampled)
+ * @ W: Image width (non upsampled)
+ * @ N: Number of block positions
+ * @ w: Inner block size
+ * @ th: Thickness of surrounding ring
+ * @ ups_factor: Upsampling factor
+ *
+ * Returns
+ * -------
+ * @ pos_mov_final: Matched block positions in the moving image, of size (N, 2)
+ */
+void find_best_matching_one_shot(float *img_ref, float *img_ups_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H,
+                                 int W, int N, int w, int th, int ups_factor, uint16_t *pos_mov_final) {
+  // printf("H, W, N: %d, %d, %d \n", H, W, N);
+
+  const int range = ups_factor - 1;  // search range
+
+  const int w_ups = w * ups_factor;
+  const int th_ups = th * ups_factor;
+  const int W_ups = W * ups_factor;
+
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+  for (int i = 0; i < N; ++i) {
+    
+    float *scores = alloc_1d_float((range * 2 + 1) * (range * 2 + 1));
+
+    // N.B.: (r_ref,c_ref) is the top-left coordinate of
+    // the outer block containing the surrounding ring
+    int r_ref = (int)pos_ref[i * 2] - th;
+
+    int c_ref = (int)pos_ref[i * 2 + 1] - th;
+
+    // Idem. for (r_mov_init, c_mov_init)
+    int r_mov_init = (int)pos_mov_init[i * 2] - th_ups;
+
+    int c_mov_init = (int)pos_mov_init[i * 2 + 1] - th_ups;
+
+    // Start patch matching
+    int sft_idx = 0;
+    for (int r_sft = -range; r_sft <= range; ++r_sft) {
+      for (int c_sft = -range; c_sft <= range; ++c_sft) {
+        const int r_mov = r_mov_init + r_sft;
+        const int c_mov = c_mov_init + c_sft;
+
+        float ssd = 0;
+        for (int ii = 0, ii_ups = 0; ii < th; ii += 1, ii_ups += ups_factor) {
+          for (int jj = 0, jj_ups = 0; jj < w + 2 * th; jj += 1, jj_ups += ups_factor) {
+            float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_ups_mov[(r_mov + ii_ups) * W_ups + c_mov + jj_ups];
+            ssd += abs_float(dif);
+          }
+        }
+
+        for (int ii = th, ii_ups = th_ups; ii < th + w; ii += 1, ii_ups += ups_factor) {
+          for (int jj = 0, jj_ups = 0; jj < th; jj += 1, jj_ups += ups_factor) {
+            float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_ups_mov[(r_mov + ii_ups) * W_ups + c_mov + jj_ups];
+            ssd += abs_float(dif);
+          }
+        }
+
+        for (int ii = th, ii_ups = th_ups; ii < th + w; ii += 1, ii_ups += ups_factor) {
+          for (int jj = w + th, jj_ups = w_ups + th_ups; jj < w + 2 * th; jj += 1, jj_ups += ups_factor) {
+            float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_ups_mov[(r_mov + ii_ups) * W_ups + c_mov + jj_ups];
+            ssd += abs_float(dif);
+          }
+        }
+
+        for (int ii = w + th, ii_ups = w_ups + th_ups; ii < w + 2 * th; ii += 1, ii_ups += ups_factor) {
+          for (int jj = 0, jj_ups = 0; jj < w + 2 * th; jj += 1, jj_ups += ups_factor) {
+            float dif = img_ref[(r_ref + ii) * W + c_ref + jj] - img_ups_mov[(r_mov + ii_ups) * W_ups + c_mov + jj_ups];
+            ssd += abs_float(dif);
+          }
+        }
+
+        scores[sft_idx++] = ssd;
+      }
+    }
+
+    float min_score = scores[0];
+    int best_sft_idx = 0;
+    for (sft_idx = 0; sft_idx < (range * 2 + 1) * (range * 2 + 1); ++sft_idx) {
+      if (min_score > scores[sft_idx]) {
+        best_sft_idx = sft_idx;
+        min_score = scores[sft_idx];
+      }
+    }
+
+    int r_sft = best_sft_idx / (range * 2 + 1) - range;
+    int c_sft = best_sft_idx % (range * 2 + 1) - range;
+
+    // Output block positions are top-left coordinates of
+    // the inner blocks inside their the surrounding rings
+    pos_mov_final[i * 2] = pos_mov_init[i * 2] + r_sft;
+    pos_mov_final[i * 2 + 1] = pos_mov_init[i * 2 + 1] + c_sft;
+
+    free(scores);
+  }
+}
+
 
 
 void find_best_matching(float *img_ref, float *img_mov, uint16_t *pos_ref, uint16_t *pos_mov_init, int H, int W, int N,

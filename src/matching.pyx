@@ -604,7 +604,7 @@ cdef extern from "helper.h":
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
 
     void find_best_matching_one_shot(
-            float *img_ref, float *img_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
+            float *img_ref, float *img_ups_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
 
 
@@ -735,12 +735,12 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 
     # Start matching
     ups_factor = 2 ** num_iter
-    img_ups_ref = upsample_image(img_ref, ups_factor)
+    # img_ups_ref = upsample_image(img_ref, ups_factor)
     img_ups_mov = upsample_image(img_mov, ups_factor)
 
     # print(f"img_ups_mov\n", img_ups_mov)
     
-    pos_ref_up = pos_ref_up * ups_factor
+    # pos_ref_up = pos_ref_up * ups_factor
     pos_mov_up = pos_mov_up * ups_factor
 
     sz_patch_up = sz_patch * ups_factor
@@ -748,18 +748,20 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     th_up = th * ups_factor
 
     # C function requires c-contiguous array
-    if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
-        img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
+    # if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
+    #     img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
+    if (not img_ref.flags["C_CONTIGUOUS"]) or (img_ref.dtype != np.float32):
+        img_ref = np.ascontiguousarray(img_ref, dtype=np.float32)
     if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
         img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
-    if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
-        pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
+    if (not pos_ref.flags["C_CONTIGUOUS"]) or (pos_ref.dtype != np.uint16):
+        pos_ref = np.ascontiguousarray(pos_ref, dtype=np.uint16)
     if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
         pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
 
     from datetime import datetime
     print(f"find_best_matching_func begins at {datetime.now()}")
-    pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
+    pos_mov_up = find_best_matching_func(img_ref, img_ups_mov, pos_ref, pos_mov_up, w, th, ups_factor)
     
     print(f"find_best_matching_func ends at {datetime.now()}")
 
@@ -797,7 +799,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
         
     #     print(f"find_best_matching_func ends at {datetime.now()}")
 
-    sz_patch_up = sz_patch * (2 ** num_iter)
+    # sz_patch_up = sz_patch * ups_factor
 
     img_split_mov = view_as_windows(img_ups_mov, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
     blocks_mov = img_split_mov[pos_mov_up[:, 0], pos_mov_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
@@ -825,11 +827,14 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     # blocks_ref = view_as_windows(img_ref, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
     
     # dev version
-    img_split_ref = view_as_windows(img_ups_ref, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
-    blocks_ref = img_split_ref[pos_ref_up[:, 0], pos_ref_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
-    blocks_ref = view_as_blocks(blocks_ref, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
-    blocks_ref = blocks_ref[:,:,:,0,0,0]
+    # img_split_ref = view_as_windows(img_ups_ref, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
+    # blocks_ref = img_split_ref[pos_ref_up[:, 0], pos_ref_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
+    # blocks_ref = view_as_blocks(blocks_ref, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
+    # blocks_ref = blocks_ref[:,:,:,0,0,0]
 
+    # faster version
+    img_split_ref = view_as_windows(img_ref, (w, w), step=(1, 1))
+    blocks_ref = img_split_ref[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
 
 
     # DEBUG use
