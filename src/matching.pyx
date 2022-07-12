@@ -671,7 +671,7 @@ def upsample_image(img_in, ups_factor):
     img_ups = ifft2(fft_ups, norm="forward", workers=os.cpu_count()).real
 
     # img_ups = np.clip(img_ups, 0, 1) * 255
-    img_ups = img_ups * 255
+    img_ups = img_ups * 255.0
     img_ups = img_ups.astype(np.float32)
 
     return img_ups
@@ -730,7 +730,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
                      (pos_mov_init[:, 1] >= th + margin) & (pos_mov_init[:, 1] < W - w + 1 - th - margin)
     pos_ref = pos_ref[valid_mask]
     
-    pos_ref_up = pos_ref.copy()
+    # pos_ref_up = pos_ref.copy()
     pos_mov_up = pos_mov_init[valid_mask]
 
     # Start matching
