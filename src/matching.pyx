@@ -266,11 +266,11 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef int W = img_ref.shape[1]
 
     # DEBUG
-    cdef np.ndarray img_blur_ref = img_ref.copy().astype(np.int64)
-    cdef np.ndarray img_blur_mov = img_mov.copy().astype(np.int64)
+    # cdef np.ndarray img_blur_ref = img_ref.copy().astype(np.int64)
+    # cdef np.ndarray img_blur_mov = img_mov.copy().astype(np.int64)
 
-    # cdef np.ndarray img_blur_ref = img_blur(img_ref)
-    # cdef np.ndarray img_blur_mov = img_blur(img_mov)
+    cdef np.ndarray img_blur_ref = img_blur(img_ref)
+    cdef np.ndarray img_blur_mov = img_blur(img_mov)
 
 
     # cdef np.ndarray offsets = np.zeros((2*s+1, 2*s+1), dtype=np.int64)
@@ -332,19 +332,13 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
     # openmp.omp_set_dynamic(8)
     
-
+    
     for i in range(H_img_blk):
         for j in range(W_img_blk):
-
-            # find_best_offset()
-
             # cost_best = INT32_MAX 
-            cost_bset = 1E+100
+            cost_best = INT64_MAX
             off_i_best = 0
             off_j_best = 0
-            # cost_best = INT32_MAX
-            # off_i_best = 0
-            # off_j_best = 0
             for off_i in range(2*s+1):
                 for off_j in range(2*s+1):
                     if cost_best > cost_of_offsets_view[off_i, off_j, i, j]:
