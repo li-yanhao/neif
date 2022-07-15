@@ -28,7 +28,7 @@ from skimage.util import view_as_windows
 from datetime import datetime
 
 
-def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=2, post_correction:bool=True):
+def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=2, post_correction:bool=False):
     """ Integrated pipeline: estimate noise curve from two successive images
         (See algo. 10 of sec. 5.6 in the paper)
 
