@@ -46,7 +46,10 @@ cdef extern from "limits.h":
     cdef int INT32_MAX
     cdef unsigned int UINT32_MAX
     cdef long INT64_MAX
-    cdef unsigned long UINT64_MAX 
+    cdef unsigned long UINT64_MAX
+
+cdef extern from "float.h":
+    cdef double DBL_MAX
 
 ########################################
 
@@ -93,15 +96,14 @@ def img_blur(img):
     Return
     ------
     img_blur: np.ndarray
-        Blurred image in int32
-
+        Blurred image in float
     """
 
-    knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]])
+    knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float)
 
     img_blur = convolve2d(img, knl, mode="same", boundary="symm")
 
-    return img_blur.astype(np.int32)
+    return img_blur
 
 
 @cython.boundscheck(False)
@@ -266,11 +268,11 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray img_blur_mov = img_blur(img_mov)
 
     # cdef np.ndarray offsets = np.zeros((2*s+1, 2*s+1), dtype=np.int64)
-    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.int32)
+    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.float64)
     
-    cdef np.int32_t[:, :, :, :] img_diff_offsets_view = img_diff_offsets
-    cdef np.int32_t[:, :] img_blur_ref_view = img_blur_ref
-    cdef np.int32_t[:, :] img_blur_mov_view = img_blur_mov
+    cdef np.float64_t[:, :, :, :] img_diff_offsets_view = img_diff_offsets
+    cdef np.float64_t[:, :] img_blur_ref_view = img_blur_ref
+    cdef np.float64_t[:, :] img_blur_mov_view = img_blur_mov
     
     # cdef np.int32_t[:, :] img_diff_view
 
@@ -298,7 +300,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray pos_ref = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
     cdef np.ndarray pos_mov = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
     
-    cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.int32)
+    cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.float64)
     # cdef np.ndarray sum_of_outer_blks, sum_of_inner_blks
     
     for off_i in xrange(2*s+1):
@@ -311,9 +313,9 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
     cdef np.int32_t[:, :] pos_ref_view = pos_ref
     cdef np.int32_t[:, :] pos_mov_view = pos_mov
-    cdef np.int32_t[:, :, :, :] cost_of_offsets_view = cost_of_offsets
+    cdef np.float64_t[:, :, :, :] cost_of_offsets_view = cost_of_offsets
 
-    cdef np.int32_t cost_best
+    cdef np.float64_t cost_best
     cdef int off_i_best
     cdef int off_j_best
     cdef int nb_pos = 0
@@ -330,7 +332,8 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
             # find_best_offset()
 
-            cost_best = INT32_MAX
+            # cost_best = INT32_MAX 
+            cost_bset = DBL_MAX
             off_i_best = 0
             off_j_best = 0
             # cost_best = INT32_MAX
