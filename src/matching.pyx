@@ -228,6 +228,7 @@ cdef inline int dist(np.int8_t x, np.int8_t y, int k):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.nonecheck(False)
 def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, int w, int th, int s):
     """ Dividing two images into wxw blocks. For each block in img_ref search the matched block in img_mov within a search range.
         (See algo. 2 of sec. 5.2 in the paper)
@@ -271,25 +272,27 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.int32_t[:, :] img_blur_ref_view = img_blur_ref
     cdef np.int32_t[:, :] img_blur_mov_view = img_blur_mov
     
-    cdef np.int32_t[:, :] img_diff_view
+    # cdef np.int32_t[:, :] img_diff_view
 
     img_blur_ref_cropped = img_blur_ref[s:(H-s), s:(W-s)]
 
     cdef int off_i, off_j, i, j
-    for off_i in xrange(0, 2*s+1):
+
+    # TODO: parallelism
+    # for off_i in prange(0, 2*s+1, nogil=True, num_threads=8):
+    for off_i in range(0, 2*s+1):
         for off_j in xrange(0, 2*s+1):
             # img_blur_mov_cropped = img_blur_mov[off_i:(H-2*s+off_i), off_j:(W-2*s+off_j)]
             # img_diff_offsets[off_i, off_j] = img_blur_ref_cropped - img_blur_mov_cropped
             # img_diff_offsets[off_i, off_j] = img_diff_offsets[off_i, off_j] * img_diff_offsets[off_i, off_j]
 
 
-            img_diff_view = img_diff_offsets_view[off_i, off_j]
+            # img_diff_view = img_diff_offsets_view[off_i, off_j]
             for i in xrange(0, H-2*s):
                 for j in xrange(0, W-2*s):
                     # TODO: update SSD metric in the paper
-                    img_diff_view[i, j] = img_blur_ref_view[i+s, j+s] - img_blur_mov_view[i+off_i, j+off_j]
-                    img_diff_view[i, j] = img_diff_view[i, j] * img_diff_view[i, j]
-
+                    img_diff_offsets_view[off_i, off_j, i, j] = img_blur_ref_view[i+s, j+s] - img_blur_mov_view[i+off_i, j+off_j]
+                    img_diff_offsets_view[off_i, off_j, i, j] = img_diff_offsets_view[off_i, off_j, i, j] * img_diff_offsets_view[off_i, off_j, i, j]
 
     cdef int outer_sz = 2 * th + w
     cdef np.ndarray pos_ref = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
@@ -297,6 +300,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     
     cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.int32)
     # cdef np.ndarray sum_of_outer_blks, sum_of_inner_blks
+    
     for off_i in xrange(2*s+1):
         for off_j in xrange(2*s+1):
             cost_of_outer_blks = convolve2d_sum(img_diff_offsets[off_i, off_j], outer_sz, outer_sz) # (H - 2s - 2th - w + 1, ...)
@@ -310,25 +314,42 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.int32_t[:, :, :, :] cost_of_offsets_view = cost_of_offsets
 
     cdef np.int32_t cost_best
-    cdef int off_i_best, off_j_best
+    cdef int off_i_best
+    cdef int off_j_best
     cdef int nb_pos = 0
 
-    for i in range(H-2*s-outer_sz+1):
-        for j in range(W-2*s-outer_sz+1):
+    # TODO: parallelism
+    cdef int H_img_blk = H-2*s-outer_sz+1
+    cdef int W_img_blk = W-2*s-outer_sz+1
+
+    # openmp.omp_set_dynamic(8)
+    
+
+    for i in range(H_img_blk):
+        for j in range(W_img_blk):
+
+            # find_best_offset()
+
             cost_best = INT32_MAX
             off_i_best = 0
             off_j_best = 0
+            # cost_best = INT32_MAX
+            # off_i_best = 0
+            # off_j_best = 0
             for off_i in range(2*s+1):
                 for off_j in range(2*s+1):
                     if cost_best > cost_of_offsets_view[off_i, off_j, i, j]:
                         cost_best = cost_of_offsets_view[off_i, off_j, i, j]
                         off_i_best = off_i; off_j_best = off_j
+            
+            nb_pos = i * W_img_blk + j
             pos_ref_view[nb_pos, 0] = i + s + th
             pos_ref_view[nb_pos, 1] = j + s + th
             pos_mov_view[nb_pos, 0] = pos_ref_view[nb_pos, 0] + (off_i_best - s)
             pos_mov_view[nb_pos, 1] = pos_ref_view[nb_pos, 1] + (off_j_best - s)
 
-            nb_pos = nb_pos + 1
+            # nb_pos = nb_pos + 1
+
 
     return pos_ref, pos_mov
 

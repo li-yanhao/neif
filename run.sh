@@ -8,11 +8,13 @@ th=3
 search_range=5
 quantile=5
 demosaic=""
-prec_lvl=3
+prec_lvl=0
 add_noise=""
 noise_a="0.2"
 noise_b="0.2"
 post_correction=""
+
+
 
 while getopts :b:w:t:s:q:d:p:N:A:B:c: option
 do 

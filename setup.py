@@ -65,8 +65,8 @@ setup(
                  include_dirs=[numpy.get_include()],
                  extra_compile_args=['-fopenmp', "-O3"],
                  extra_link_args=['-fopenmp'],
-                 language="c",
-                 language_leve="3"
+                 language="c"
+                #  language_leve="3"
         )
     ],
 )
