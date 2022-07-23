@@ -11,31 +11,27 @@ import argparse
 parser = argparse.ArgumentParser(description='Noise Estimation')
 
 parser.add_argument('im_0', type=str,
-                    help='First frame')
+                    help='First frame filename')
 parser.add_argument('im_1', type=str,
-                    help='Second frame')
+                    help='Second frame filename')
 parser.add_argument('out', type=str,
-                    help='Output curve file')
+                    help='Output curve filename')
 
 parser.add_argument('-bins', type=int, default=16,
                     help='Number of bins')
 parser.add_argument('-quantile', type=float, default=5,
-                    help='Percentage of quantile')
-parser.add_argument('-search_range', type=int, default=10,
+                    help='Percentage of quantile, in %')
+parser.add_argument('-search_range', type=int, default=5,
                     help='Search range of patch matching')
-parser.add_argument('-w', type=int, default=7,
+parser.add_argument('-w', type=int, default=20,
                     help='Block size')
+parser.add_argument('-T', type=int, default=21,
+                    help='Frequency separator')
 parser.add_argument('-th', type=int, default=3,
                     help='Thickness of ring for patch matching')
 parser.add_argument('-demosaic', default=False,
                     help='Whether demosaicing is processed before'
                     'noise estimation', action='store_true')
-parser.add_argument('-prec_lvl', type=int, default=2,
-                    help='Subpixel matching precision level, 0 for no subpixel matching,'
-                    ' and n for precision of (1/2)^n pixel')
-# parser.add_argument('-auto_quantile', default=False,
-#                     help='Whether automatic selection of blocks'
-#                     'is activated', action='store_true')
 parser.add_argument('-add_noise', default=False,
                     help='True for adding simulated noise',
                     action='store_true')
@@ -43,17 +39,16 @@ parser.add_argument('-noise_a', type=float, default=3,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=3,
                     help='Noise model parameter: b')
-parser.add_argument('-post_correction', default=False,
-                    help='Whether processing post correction of noise curve estimation', action='store_true')
-
 
 
 args = parser.parse_args()
 
 
-if __name__ == "__main__":
-    print(args)
 
+if __name__ == "__main__":
+    print("Parameters:")
+    print(args)
+    print()
     
 
     img_0 = utils.read_img(args.im_0, demosaic=args.demosaic)
@@ -73,9 +68,15 @@ if __name__ == "__main__":
     #                                        search_range=args.search_range, num_div=num_div, auto_quantile=args.auto_quantile)
 
     start = time.time()
-    T = args.w + 1
-    intensities, variances = estimate_noise_curve(img_0, img_1, args.w, T, args.th, q=args.quantile/100, \
-            bins=args.bins, s=args.search_range, prec_lvl=args.prec_lvl, post_correction=args.post_correction)
+    
+    # args.T = args.w + 1
+
+    intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
+            bins=args.bins, s=args.search_range)
+
+
+    print("###### Output ###### \n")
+    
 
     print("intensities:")
     print(intensities, "\n")

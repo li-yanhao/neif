@@ -102,7 +102,6 @@ def img_blur(img):
     knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.int64)
 
     img_blur = convolve2d(img, knl, mode="same", boundary="symm")
-    print("img_blur.dtype", img_blur.dtype)
 
     return img_blur
 
@@ -783,11 +782,11 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
         pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
 
-    from datetime import datetime
-    print(f"find_best_matching_func begins at {datetime.now()}")
+    # from datetime import datetime
+    # print(f"find_best_matching_func begins at {datetime.now()}")
     pos_mov_up = find_best_matching_func(img_ref, img_ups_mov, pos_ref, pos_mov_up, w, th, ups_factor)
     
-    print(f"find_best_matching_func ends at {datetime.now()}")
+    # print(f"find_best_matching_func ends at {datetime.now()}")
 
 
 

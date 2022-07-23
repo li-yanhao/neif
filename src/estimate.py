@@ -24,11 +24,10 @@ import matching as M
 
 from skimage.util import view_as_windows
 
-# debug
-from datetime import datetime
+# from datetime import datetime
 
 
-def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=2, post_correction:bool=False):
+def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=0):
     """ Integrated pipeline: estimate noise curve from two successive images
         (See algo. 10 of sec. 5.6 in the paper)
 
@@ -54,8 +53,7 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
     prec_lvl: int
         Subpixel precision = (1/2)^prec_lvl
         e.g. prec_lvl=3 leads to subpixel precision at 0.125 px
-    post_correction: bool
-        Flag to activate post correction
+
     Returns
     -------
     intensities: np.ndarray
@@ -75,11 +73,11 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
     for ch in range(C):
         img_ref_chnl = img_ref[ch].astype(np.int32)
         img_mov_chnl = img_mov[ch].astype(np.int32)
-        print(f"pixel_match at {datetime.now()}")
+        # print(f"pixel_match at {datetime.now()}")
         pos_ref, pos_mov = M.pixel_match(img_ref_chnl, img_mov_chnl, w, th, s)
 
         pos_ref, pos_mov = M.remove_saturated(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w)
-        print(f"remove_saturated at {datetime.now()}")
+        # print(f"remove_saturated at {datetime.now()}")
 
         # DEBUG: remove blocks near the borders so that subpixel matching can work: OK
         border = 2
@@ -107,7 +105,7 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
         pos_mov_filtered_in_bins = []
 
 
-        print(f"filter_position_pairs at {datetime.now()}")
+        # print(f"filter_position_pairs at {datetime.now()}")
         for b in range(bins):
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
@@ -130,7 +128,7 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
         # print(f"pos_mov_filtered_in_bins {pos_mov_filtered_in_bins.shape}")
         # return pos_ref_filtered_in_bins, pos_mov_filtered_in_bins
 
-        print(f"subpixel_match at {datetime.now()}")
+        # print(f"subpixel_match at {datetime.now()}")
         if prec_lvl > 0:
             blks_ref_in_bins, blks_mov_in_bins = M.subpixel_match(
                     img_ref_chnl, img_mov_chnl, pos_ref_filtered_in_bins, pos_mov_filtered_in_bins, \
@@ -161,7 +159,7 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
         blks_ref_in_bins = blks_ref_in_bins[:int(len(blks_ref_in_bins) // bins * bins)].reshape(bins, -1, w, w)
         blks_mov_in_bins = blks_mov_in_bins[:int(len(blks_mov_in_bins) // bins * bins)].reshape(bins, -1, w, w)
 
-        print(f"compute_variance_from_pairs at {datetime.now()}")
+        # print(f"compute_variance_from_pairs at {datetime.now()}")
         for b in range(bins):
             blks_ref = blks_ref_in_bins[b]
             blks_mov = blks_mov_in_bins[b]
@@ -178,25 +176,6 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
             intensities[ch, b] = intensity
 
 
-        print(f"post_correction at {datetime.now()}")
-        if post_correction==True:
-            for _ in range(3):
-                for b in range(bins):
-                    blks_ref = blks_ref_in_bins[b]
-                    blks_mov = blks_mov_in_bins[b]
-                    
-                    # TODO: Add to IPOL paper: post correction
-
-                    blks_ref_filtered, blks_mov_filtered = M.filter_block_pairs_with_curve(blks_ref, blks_mov, T, 1/3, intensities[ch], variances[ch])
-                    variance = M.compute_variance_from_pairs(blks_ref_filtered, blks_mov_filtered, T)
-                    variances[ch, b] = variance
-
-                    intensity = (np.mean(blks_ref_filtered) + np.mean(blks_mov_filtered)) / 2
-                    intensities[ch, b] = intensity
-
-        # print("intensities:", intensities)
-        # print("variances:", variances)
-
-    print(f"end at {datetime.now()}")
+    # print(f"end at {datetime.now()}")
 
     return intensities, variances
