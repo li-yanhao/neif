@@ -16,7 +16,7 @@ noise_b="0.2"
 
 
 
-while getopts :b:w:T:t:s:q:d:p:N:A:B: option
+while getopts :b:w:T:t:s:q:d:N:A:B: option
 do 
     case "${option}" in
         b) bins=${OPTARG};;
@@ -36,7 +36,6 @@ do
                 exit 1
             fi
             ;;
-        p) prec_lvl=${OPTARG};;
         N)  if [ ${OPTARG} = "True" ]
             then
                 add_noise="-add_noise"
@@ -84,14 +83,11 @@ command="python $main $img_0 $img_1 $out_curve \
     -T $T \
     -th $th \
     -search_range $search_range \
-    -prec_lvl $prec_lvl \
     -noise_a $noise_a \
     -noise_b $noise_b \
     $add_noise \
     $demosaic"
 
-echo $command
+# echo $command
 $command
 
-
-# echo "Configuration done!"

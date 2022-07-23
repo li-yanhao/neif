@@ -58,7 +58,14 @@ if __name__ == "__main__":
         img_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
         img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
 
-    assert img_0.shape == img_1.shape, "The two input images should have the same size and the same channel"
+    if img_0.shape != img_1.shape: 
+        print("Error: The two input images should have the same size and the same channel")
+        quit()
+
+    if args.T > 2 * args.w - 3:
+        print("Error: Frequency separator T and block size w should satisfy T<=2*w-3")
+        quit()
+        
 
     # if img_0.ndim == 3:
     #     if args.demosaic and img_0.shape[2] > 1:
