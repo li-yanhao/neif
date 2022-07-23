@@ -72,4 +72,4 @@ The plotted noise curve:
 <!-- ![](curve.png | width=100) -->
 
 
-<img src="curve.png" alt="alt text" width="300"/>
+<img src="curve.png" alt="alt text" width="600"/>
