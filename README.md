@@ -68,6 +68,8 @@ spent time: 7.277174472808838 s
 ```
 
 The plotted noise curve:
-![](curve.png)
 
-<img src="curve.png" alt="alt text" width="800"/>
+<!-- ![](curve.png | width=100) -->
+
+
+<img src="curve.png" alt="alt text" width="300"/>
