@@ -32,6 +32,8 @@ parser.add_argument('-th', type=int, default=3,
 parser.add_argument('-demosaic', default=False,
                     help='Whether demosaicing is processed before'
                     'noise estimation', action='store_true')
+parser.add_argument('-multiscale', type=int, default=0,
+                    help='Number of scales for downscaling')
 parser.add_argument('-add_noise', default=False,
                     help='True for adding simulated noise',
                     action='store_true')
@@ -78,39 +80,53 @@ if __name__ == "__main__":
     
     # args.T = args.w + 1
 
-    intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
-            bins=args.bins, s=args.search_range)
+    scale = 0
+    while scale <= args.multiscale:
+        if scale > 0:
+            # img_0 = utils.downscale(img_0)
+            # img_1 = utils.downscale(img_1)
+
+            # img_0 = utils.downscale_lebrun(img_0)
+            # img_1 = utils.downscale_lebrun(img_1)
+
+            img_0 = utils.downscale_once(img_0)
+            img_1 = utils.downscale_once(img_1)
+
+        intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100/ (0.5**scale), \
+                bins=args.bins, s=args.search_range)
 
 
-    print("###### Output ###### \n")
-    
+        print("###### Output ###### \n")
+        
+        print(f"scale {scale}")
+        print("intensities:")
+        print(intensities, "\n")
 
-    print("intensities:")
-    print(intensities, "\n")
+        print("noise variances:")
+        print(variances, "\n")
 
-    print("noise variances:")
-    print(variances, "\n")
+        # save image for result visualization
+        img_0_v = np.transpose(img_0, (1, 2, 0))
+        img_1_v = np.transpose(img_1, (1, 2, 0))
+        cv2.imwrite(f"noisy_0_s{scale}.png", img_0_v.astype(np.uint8))
+        cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
 
-    # save image for result visualization
-    img_0 = np.transpose(img_0, (1, 2, 0))
-    img_1 = np.transpose(img_1, (1, 2, 0))
-    cv2.imwrite("noisy_0.png", img_0.astype(np.uint8))
-    cv2.imwrite("noisy_1.png", img_1.astype(np.uint8))
+        if args.add_noise == True:
+            utils.plot_noise_curve(intensities, variances, a=args.noise_a, b=args.noise_b, fname=args.out)
 
-    if args.add_noise == True:
-        utils.plot_noise_curve(intensities, variances, a=args.noise_a, b=args.noise_b, fname=args.out)
+            variances_gt = args.noise_a + args.noise_b * intensities
 
-        variances_gt = args.noise_a + args.noise_b * intensities
+            abs_errors = np.abs(variances_gt - variances)
 
-        abs_errors = np.abs(variances_gt - variances)
+            print("Absolute errors:")
+            print(abs_errors, "\n")
 
-        print("Absolute errors:")
-        print(abs_errors, "\n")
+            print("Mean relative error:")
+            print((abs_errors / variances_gt).mean(), "\n")
 
-        print("Mean relative error:")
-        print((abs_errors / variances_gt).mean(), "\n")
-
-    else:
-        utils.plot_noise_curve(intensities, variances, fname=args.out)
+        else:
+            utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
+        
+        scale += 1
     
     print(f"time spent: {time.time() - start} s")

@@ -35,7 +35,7 @@ intensities, variances = estimate_noise_curve(img_0, img_1, w=..., T=..., th=...
 
 ## Demo
 
-Estimate the noise curve from two successive frames:
+Estimate noise curve from two successive frames:
 
 frame t             |  frame t+1
 :---:|:---:

@@ -3,12 +3,13 @@
 set -eu
 
 bins=16
-w=20
-T=21
+w=7
+T=8
 th=3
 search_range=5
 quantile=5
 demosaic=""
+multiscale=2
 prec_lvl=0
 add_noise=""
 noise_a="0.2"
@@ -16,7 +17,7 @@ noise_b="0.2"
 
 
 
-while getopts :b:w:T:t:s:q:d:N:A:B: option
+while getopts :b:w:T:t:s:q:d:m:N:A:B: option
 do 
     case "${option}" in
         b) bins=${OPTARG};;
@@ -36,6 +37,7 @@ do
                 exit 1
             fi
             ;;
+        m)  multiscale=${OPTARG};;
         N)  if [ ${OPTARG} = "True" ]
             then
                 add_noise="-add_noise"
@@ -63,7 +65,7 @@ out_curve=${@:$OPTIND+2:1}
 #####################
 # TEST in local env #
 #####################
-# main=./main.py
+main=./main.py
 # img_0="frame0.png"
 # img_1="frame1.png"
 # out_curve="curve.png"
@@ -71,7 +73,7 @@ out_curve=${@:$OPTIND+2:1}
 #####################
 #      IPOL env     #
 #####################
-main=$bin/neif/main.py
+# main=$bin/neif/main.py
 
 #####################
 #   Main execution  #
@@ -86,8 +88,9 @@ command="python $main $img_0 $img_1 $out_curve \
     -noise_a $noise_a \
     -noise_b $noise_b \
     $add_noise \
-    $demosaic"
+    $demosaic \
+    -multiscale $multiscale"
 
-# echo $command
+echo $command
 $command
 
