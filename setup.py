@@ -65,8 +65,9 @@ setup(
                  include_dirs=[numpy.get_include()],
                  extra_compile_args=['-fopenmp', "-O3"],
                  extra_link_args=['-fopenmp'],
-                 language="c"
-                #  language_leve="3"
+                 language="c",
+                define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+                #  language_leve="3",
         )
     ],
 )
