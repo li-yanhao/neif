@@ -27,6 +27,8 @@ from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 
 from skimage.util.shape import view_as_blocks
+from scipy.ndimage import gaussian_filter
+
 
 def read_img(fname: str, demosaic: bool):
     """ Read image from a file name
@@ -101,7 +103,7 @@ def add_noise(img_clean, a, b):
     return img_noisy
 
 
-def downscale(img: np.ndarray) -> np.ndarray:
+def downscale(img: np.ndarray, antialias: bool=True) -> np.ndarray:
     """ Downscale an image by factor 2. Each of the 4 pixels in a 2x2 block
     is extracted to recompose a downsampled image. The 4 downsampled images
     are finally sliced with vertical and horizontal flipping.
@@ -133,6 +135,11 @@ def downscale(img: np.ndarray) -> np.ndarray:
     C, H, W = img.shape
 
     img_ds = np.zeros_like(img)
+
+    if antialias:
+        antialiasing = 1.0
+        sigma = antialiasing * np.sqrt(2**2 - 1)
+        img = gaussian_filter(img, sigma=sigma, mode='reflect')
 
     for c in range(C):
         img_ch = img[c]
@@ -214,9 +221,6 @@ def downscale_lebrun(img: np.ndarray) -> np.ndarray:
         img_bot_r = img_ch[1:(H-1)//2*2+1, 1:(W-1)//2*2+1]
         img_bot_r = view_as_blocks(img_bot_r, (2,2)).mean(axis=(-1, -2))
         img_bot_r = np.flip(img_bot_r, (0, 1))
-
-        # img_top = np.concatenate((img_top_l, img_top_r), axis=1)
-        # img_bot = np.concatenate((img_top_l, img_top_r), axis=1)
 
         img_ch = np.block([[img_top_l, img_top_r], [img_bot_l, img_bot_r]])
 

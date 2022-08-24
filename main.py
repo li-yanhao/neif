@@ -83,17 +83,25 @@ if __name__ == "__main__":
     scale = 0
     while scale <= args.multiscale:
         if scale > 0:
-            # img_0 = utils.downscale(img_0)
-            # img_1 = utils.downscale(img_1)
+            # img_0 = utils.downscale(img_0, antialias=False)
+            # img_1 = utils.downscale(img_1, antialias=False)
 
-            # img_0 = utils.downscale_lebrun(img_0)
-            # img_1 = utils.downscale_lebrun(img_1)
+            img_0 = utils.downscale_lebrun(img_0)
+            img_1 = utils.downscale_lebrun(img_1)
 
-            img_0 = utils.downscale_once(img_0)
-            img_1 = utils.downscale_once(img_1)
+            # img_0 = utils.downscale_once(img_0)
+            # img_1 = utils.downscale_once(img_1)
 
-        intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100/ (0.5**scale), \
+        img_0 = img_0.astype(np.float32)
+        img_1 = img_1.astype(np.float32)
+
+        intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 * (0.25**scale), \
                 bins=args.bins, s=args.search_range)
+        
+        variances *= 4**scale
+        
+        # intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
+                # bins=args.bins, s=args.search_range)
 
 
         print("###### Output ###### \n")

@@ -71,20 +71,21 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
 
 
     for ch in range(C):
-        img_ref_chnl = img_ref[ch].astype(np.int32)
-        img_mov_chnl = img_mov[ch].astype(np.int32)
+        img_ref_chnl = img_ref[ch]
+        img_mov_chnl = img_mov[ch]
         # print(f"pixel_match at {datetime.now()}")
         pos_ref, pos_mov = M.pixel_match(img_ref_chnl, img_mov_chnl, w, th, s)
 
         pos_ref, pos_mov = M.remove_saturated(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w)
         # print(f"remove_saturated at {datetime.now()}")
 
-        # DEBUG: remove blocks near the borders so that subpixel matching can work: OK
+        # remove blocks near the borders so that subpixel matching can work
         border = 2
         mask = (pos_mov[:, 0] >= border + th) & (pos_mov[:, 0] < H - w + 1 - th - border) \
             & (pos_mov[:, 1] >= border + th) & (pos_mov[:, 1] < W - w + 1 - th - border)
         pos_ref = pos_ref[mask]
         pos_mov = pos_mov[mask]
+        
         # return pos_ref, pos_mov
         
         # blks_ref = view_as_windows(img_ref_chnl, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]]
@@ -146,11 +147,6 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
 
         
         # DEBUG: compare, OK
-        # Reason: I used float16 for subpixel matching, which was not accurate
-        # Now both old and new implementations use float32, and output the same results.
-        # print(f"pos_ref_filtered_in_bins {pos_ref_filtered_in_bins.shape}")
-        # print(f"pos_mov_filtered_in_bins {pos_mov_filtered_in_bins.shape}")
-        # return blks_ref_in_bins, blks_mov_in_bins
 
         # print("blks_ref_in_bins", blks_ref_in_bins.shape)
         # print("blks_mov_in_bins", blks_mov_in_bins.shape)

@@ -39,8 +39,16 @@ import os
 
 ########################################
 
-ctypedef np.int32_t T_t
-T = np.int32
+ctypedef fused T_t:
+    np.int32_t
+    float
+
+ctypedef fused Tu_t:
+    np.int64_t
+    double
+
+# ctypedef np.int32_t T_t
+# T = np.int32
 
 cdef extern from "limits.h":
     cdef int INT32_MAX
@@ -99,7 +107,7 @@ def img_blur(img):
         Blurred image in float
     """
 
-    knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.int64)
+    knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
 
     img_blur = convolve2d(img, knl, mode="same", boundary="symm")
 
@@ -127,11 +135,15 @@ def integral_image(T_t[:, :] img, int H, int W):
         output integral image, of size (H, W)
 
     """
+    if T_t is int:
+        T = np.int64
+    else:
+        T = np.float64
 
     cdef np.ndarray img_int = np.zeros((H, W), dtype=T)
     img_int[0] = np.cumsum(img[0])
 
-    cdef int s
+    cdef T_t s
     cdef int i, j
 
     cdef T_t[:, :] img_view = img
@@ -206,12 +218,12 @@ def convolve2d_sum(np.ndarray img, int h, int w):
 
     """
 
-    sum_of_blocks = np.cumsum(img, axis=1, dtype=np.int64)
+    sum_of_blocks = np.cumsum(img, axis=1, dtype=np.float64)
 
     sum_of_blocks[:, w:] = sum_of_blocks[:, w:] - sum_of_blocks[:, :-w]
     sum_of_blocks = sum_of_blocks[:, w-1 : ]
 
-    sum_of_blocks = np.cumsum(sum_of_blocks, axis=0, dtype=np.int64)
+    sum_of_blocks = np.cumsum(sum_of_blocks, axis=0, dtype=np.float64)
     sum_of_blocks[h:, :] = sum_of_blocks[h:, :] - sum_of_blocks[:-h, :]
     sum_of_blocks = sum_of_blocks[h-1:, :]
 
@@ -273,11 +285,13 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
 
     # cdef np.ndarray offsets = np.zeros((2*s+1, 2*s+1), dtype=np.int64)
-    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.int64)
+
+
+    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.float64)
     
-    cdef np.int64_t[:, :, :, :] img_diff_offsets_view = img_diff_offsets
-    cdef np.int64_t[:, :] img_blur_ref_view = img_blur_ref
-    cdef np.int64_t[:, :] img_blur_mov_view = img_blur_mov
+    cdef double[:, :, :, :] img_diff_offsets_view = img_diff_offsets
+    cdef double[:, :] img_blur_ref_view = img_blur_ref
+    cdef double[:, :] img_blur_mov_view = img_blur_mov
     
     # cdef np.int32_t[:, :] img_diff_view
 
@@ -305,7 +319,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray pos_ref = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
     cdef np.ndarray pos_mov = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
     
-    cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.int64)
+    cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.float64)
     # cdef np.ndarray sum_of_outer_blks, sum_of_inner_blks
     
     for off_i in xrange(2*s+1):
@@ -318,19 +332,18 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
     cdef np.int32_t[:, :] pos_ref_view = pos_ref
     cdef np.int32_t[:, :] pos_mov_view = pos_mov
-    cdef np.int64_t[:, :, :, :] cost_of_offsets_view = cost_of_offsets
+    cdef np.float64_t[:, :, :, :] cost_of_offsets_view = cost_of_offsets
 
-    cdef np.int64_t cost_best
+    cdef np.float64_t cost_best
     cdef int off_i_best
     cdef int off_j_best
     cdef int nb_pos = 0
 
-    # TODO: parallelism
     cdef int H_img_blk = H-2*s-outer_sz+1
     cdef int W_img_blk = W-2*s-outer_sz+1
 
+    # TODO: parallelism
     # openmp.omp_set_dynamic(8)
-    
     
     for i in range(H_img_blk):
         for j in range(W_img_blk):

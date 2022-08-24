@@ -1,6 +1,0 @@
-build/
-src/__pycache__/
-src/matching.c
-src/matching.cpp
-# .gitignore
-*.so
