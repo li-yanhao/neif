@@ -872,7 +872,7 @@ from skimage.util.shape import view_as_blocks
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def estimate_variance_from_differences(
-    blks_ref: np.ndarray, blks_mov: np.ndarray,
+    blks_ref, blks_mov,
     T: int, q: float, scale:int):
     """
     Parameters
@@ -887,25 +887,28 @@ def estimate_variance_from_differences(
     ------
     variance: noise variance from the blocks of differences
 
-    """
-
-    blks_diff = blks_mov - blks_ref
-
-    dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    """    
 
     # if scale is not 0, subsample the dct blocks
-    N, W, _ = dct_blks.shape
-
-    w = W
     if scale > 0:
+        N, W, _ = blks_ref.shape
+
         factor = 2 ** scale
         assert W % factor == 0, "The block size must be multiple of the subsample factor"
-
         w = W // factor
-        blks = view_as_blocks(dct_blks, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        blks = np.transpose(blks, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
-        dct_blks = blks.reshape(-1, w, w)
 
+        blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_ref = blks_ref.reshape(-1, w, w)
+
+        blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_mov = blks_mov.reshape(-1, w, w)
+
+    N, w, _ = blks_ref.shape
+
+    blks_diff = blks_mov - blks_ref
+    dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
     
     # Low-frequency energy
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
