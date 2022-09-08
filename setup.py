@@ -6,8 +6,15 @@
 # from Cython.Build import cythonize
 # from numpy.distutils.misc_util import get_info
 
+from Cython.Build import cythonize
+from distutils.extension import Extension
+from distutils.core import setup
+from Cython.Distutils import build_ext
+import numpy
+# from distutils.core import setup, Extension
 source_files = ["src/matching.pyx", "src/helper.c"]
 
+import platform
 
 # ext_modules = [
 #     Extension(
@@ -26,8 +33,6 @@ source_files = ["src/matching.pyx", "src/helper.c"]
 #     name='matching',
 #     ext_modules=cythonize(ext_modules, language_level="3"),
 # )
-
-
 
 
 # def configuration(parent_package='', top_path=None):
@@ -52,22 +57,41 @@ source_files = ["src/matching.pyx", "src/helper.c"]
 #     setup(configuration=configuration)
 
 
+# setup(
+#     cmdclass={'build_ext': build_ext},
+#     ext_modules=[
+#         Extension("matching",
+#                   source_files,
+#                   include_dirs=[numpy.get_include()],
+#                   extra_compile_args=['-Xpreprocessor', '-fopenmp', "-O3"],
+#                   extra_link_args=['-Xpreprocessor', '-fopenmp'],
+#                   language="c++",
+#                   # define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+#                   #  language_leve="3",
+#                   )
+#     ],
+# )
 
-from distutils.core import setup, Extension
-import numpy
-from Cython.Distutils import build_ext
+import os
 
-setup(
-    cmdclass={'build_ext': build_ext},
-    ext_modules=[
-        Extension("matching",
-                 source_files,
+if platform.system() == "Linux":
+      exts = Extension(name='matching',
+           sources=source_files,
+           include_dirs=[numpy.get_include()],
+           extra_compile_args=['-fopenmp', "-O3", 
+                  ],
+           extra_link_args=['-fopenmp'],
+           language="c",)
+
+elif platform.system() == "Darwin":
+      os.environ['CC'] = 'gcc-12'
+      exts = Extension(name='matching',
+                 sources=source_files,
                  include_dirs=[numpy.get_include()],
-                 extra_compile_args=['-fopenmp', "-O3"],
-                 extra_link_args=['-fopenmp'],
-                 language="c",
-                define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
-                #  language_leve="3",
-        )
-    ],
-)
+                 extra_compile_args=['-fopenmp', "-O3", 
+                        ],
+                 extra_link_args=[ '-fopenmp'],
+                 language="c",)
+
+setup(name='matching',
+      ext_modules=cythonize(exts))

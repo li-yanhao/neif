@@ -9,7 +9,7 @@ th=3
 search_range=5
 quantile=5
 demosaic=""
-multiscale=3
+multiscale=2
 prec_lvl=0
 add_noise=""
 noise_a="0.2"
@@ -66,12 +66,9 @@ out_curve=${@:$OPTIND+2:1}
 # TEST in local env #
 #####################
 main=./main.py
-# img_0="frame0.png"
-# img_1="frame1.png"
-scene="R/210"
-img_0="/home/li/yanhao/phd/sshfs/yanhao/datasets/drone_synth_rescaled/${scene}/iso1600/frame0.png"
-img_1="/home/li/yanhao/phd/sshfs/yanhao/datasets/drone_synth_rescaled/${scene}/iso1600/frame1.png"
-out_curve="curve.png"
+img_0="frame0.png"
+img_1="frame1.png"
+
 
 #####################
 #      IPOL env     #
@@ -81,7 +78,7 @@ out_curve="curve.png"
 #####################
 #   Main execution  #
 #####################
-command="python $main $img_0 $img_1 $out_curve \
+command="python $main $img_0 $img_1 \
     -bins $bins \
     -quantile $quantile  \
     -w $w \
@@ -91,8 +88,7 @@ command="python $main $img_0 $img_1 $out_curve \
     -noise_a $noise_a \
     -noise_b $noise_b \
     $add_noise \
-    $demosaic \
-    -multiscale $multiscale"
+    $demosaic"
 
 echo $command
 $command

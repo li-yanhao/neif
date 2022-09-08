@@ -14,8 +14,8 @@ parser.add_argument('im_0', type=str,
                     help='First frame filename')
 parser.add_argument('im_1', type=str,
                     help='Second frame filename')
-parser.add_argument('out', type=str,
-                    help='Output curve filename')
+# parser.add_argument('out', type=str,
+#                     help='Output curve filename')
 
 parser.add_argument('-bins', type=int, default=16,
                     help='Number of bins')
@@ -32,7 +32,7 @@ parser.add_argument('-th', type=int, default=3,
 parser.add_argument('-demosaic', default=False,
                     help='Whether demosaicing is processed before'
                     'noise estimation', action='store_true')
-parser.add_argument('-multiscale', type=int, default=0,
+parser.add_argument('-multiscale', type=int, default=2,
                     help='Number of scales for downscaling')
 parser.add_argument('-add_noise', default=False,
                     help='True for adding simulated noise',
@@ -81,13 +81,22 @@ if __name__ == "__main__":
     # args.T = args.w + 1
 
     scale = 0
+
+    # save image for result visualization
+    img_0_v = np.transpose(img_0, (1, 2, 0))
+    img_1_v = np.transpose(img_1, (1, 2, 0))
+    cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
+    cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
+
+    print("###### Output ###### \n")
+
     while scale <= args.multiscale:
-        if scale > 0:
+        # if scale > 0:
             # img_0 = utils.downscale(img_0, antialias=False)
             # img_1 = utils.downscale(img_1, antialias=False)
 
-            img_0 = utils.downscale_lebrun(img_0)
-            img_1 = utils.downscale_lebrun(img_1)
+            # img_0 = utils.downscale_lebrun(img_0)
+            # img_1 = utils.downscale_lebrun(img_1)
 
             # img_0 = utils.downscale_once(img_0)
             # img_1 = utils.downscale_once(img_1)
@@ -96,17 +105,17 @@ if __name__ == "__main__":
         img_1 = img_1.astype(np.float32)
 
         intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 * (0.25**scale), \
-                bins=args.bins, s=args.search_range)
+                bins=args.bins, s=args.search_range, scale=scale)
         
-        variances *= 4**scale
+        # For downscale_lebrun, the noise can be restored to the original level 
+        # variances *= 4**scale
         
         # intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
                 # bins=args.bins, s=args.search_range)
 
 
-        print("###### Output ###### \n")
-        
-        print(f"scale {scale}")
+        print()
+        print(f"scale {scale} \n")
         print("intensities:")
         print(intensities, "\n")
 
@@ -114,15 +123,18 @@ if __name__ == "__main__":
         print(variances, "\n")
 
         # save image for result visualization
-        img_0_v = np.transpose(img_0, (1, 2, 0))
-        img_1_v = np.transpose(img_1, (1, 2, 0))
-        cv2.imwrite(f"noisy_0_s{scale}.png", img_0_v.astype(np.uint8))
-        cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
+        # img_0_v = np.transpose(img_0, (1, 2, 0))
+        # img_1_v = np.transpose(img_1, (1, 2, 0))
+        # cv2.imwrite(f"noisy_0_s{scale}.png", img_0_v.astype(np.uint8))
+        # cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
 
         if args.add_noise == True:
-            utils.plot_noise_curve(intensities, variances, a=args.noise_a, b=args.noise_b, fname=args.out)
+            a = args.noise_a / 4**scale
+            b = args.noise_b / 4**scale
 
-            variances_gt = args.noise_a + args.noise_b * intensities
+            utils.plot_noise_curve(intensities, variances, a=a, b=b, fname=f"curve_s{scale}.png")
+
+            variances_gt = a + b * intensities
 
             abs_errors = np.abs(variances_gt - variances)
 

@@ -27,7 +27,7 @@ from skimage.util import view_as_windows
 # from datetime import datetime
 
 
-def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=0):
+def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:int, s:int, prec_lvl:int=0, scale=0):
     """ Integrated pipeline: estimate noise curve from two successive images
         (See algo. 10 of sec. 5.6 in the paper)
 
@@ -69,6 +69,8 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
     intensities = np.zeros((C, bins))
     variances = np.zeros((C, bins))
 
+    # Use larger block for matching, so that difference blocks can be subsampled at correct size
+    w = 2**scale * w
 
     for ch in range(C):
         img_ref_chnl = img_ref[ch]
@@ -111,7 +113,7 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
             
-            pos_ref_filtered, pos_mov_filtered = M.filter_position_pairs(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, T, 3 * q)
+            pos_ref_filtered, pos_mov_filtered = M.filter_position_pairs(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, T, 1)
             
             pos_ref_filtered_in_bins.append(pos_ref_filtered)
             pos_mov_filtered_in_bins.append(pos_mov_filtered)
@@ -164,14 +166,25 @@ def estimate_noise_curve(img_ref, img_mov, w:int, T:int, th:int, q:float, bins:i
             # TODO: Add to IPOL paper
             # filter_block_pairs need real blocks as input, but not img + block positions
 
-            blks_ref_filtered, blks_mov_filtered = M.filter_block_pairs(blks_ref, blks_mov, T, 1/3)
-            variance = M.compute_variance_from_pairs(blks_ref_filtered, blks_mov_filtered, T)
-            variances[ch, b] = variance
+            # blks_diff = blks_ref - blks_mov
+            
+            intensity, variance = M.estimate_variance_from_differences(blks_mov, blks_ref, T, q, scale)
 
-            intensity = (np.mean(blks_ref_filtered) + np.mean(blks_mov_filtered)) / 2
+            # blks_ref_filtered, blks_mov_filtered = M.filter_block_pairs(blks_ref, blks_mov, T, 1/3)
+            # variance = M.compute_variance_from_pairs(blks_ref_filtered, blks_mov_filtered, T)
+
+            # intensity = (np.mean(blks_ref_filtered) + np.mean(blks_mov_filtered)) / 2
+
+            variances[ch, b] = variance
             intensities[ch, b] = intensity
 
 
     # print(f"end at {datetime.now()}")
 
     return intensities, variances
+
+
+        
+    
+
+
