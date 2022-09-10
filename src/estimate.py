@@ -24,7 +24,7 @@ import matching as M
 from skimage.util import view_as_windows
 
 
-def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, subscale=0):
+def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, f=1):
     """ Main function: estimate noise curves from two successive images
         (See Algo. 6 of Sec. 5 and Algo. 8 of Sec. 8 in the paper)
 
@@ -47,8 +47,8 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     s: int
         Half of search range for patch matching
         Note that the range of a squared search region window = search_range * 2 + 1
-    subscale: int
-        The scale of subscaling, 0 for no subscaling
+    f: int
+        Subscaling factor
 
     Returns
     -------
@@ -66,7 +66,8 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     variances = np.zeros((C, bins))
 
     # Use larger block for matching, so that difference blocks can be subsampled at correct size
-    w_up = 2**subscale * w
+    print(f"f:{f}")
+    w_up = f * w
 
     for ch in range(C):
         img_ref_chnl = img_ref[ch]
@@ -94,11 +95,8 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
 
-            pos_ref_filtered, pos_mov_filtered = M.filter_position_pairs(
-                img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up, T, 3 * q)
-
-            pos_ref_filtered_in_bins.append(pos_ref_filtered)
-            pos_mov_filtered_in_bins.append(pos_mov_filtered)
+            pos_ref_filtered_in_bins.append(pos_ref)
+            pos_mov_filtered_in_bins.append(pos_mov)
 
         # Merge the pairs together so that they are processed at once in subpixel matching
         pos_ref_filtered_in_bins = np.vstack(pos_ref_filtered_in_bins)
@@ -124,7 +122,7 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
             blks_mov = blks_mov_in_bins[b]
 
             intensity, variance = M.estimate_intensity_and_variance(
-                blks_mov, blks_ref, T, 1 / 3, subscale)
+                blks_mov, blks_ref, T, q, f)
 
             variances[ch, b] = variance
             intensities[ch, b] = intensity

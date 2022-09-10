@@ -36,7 +36,7 @@ parser.add_argument('-noise_a', type=float, default=3,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=3,
                     help='Noise model parameter: b')
-parser.add_argument('-multiscale', type=int, default=0,
+parser.add_argument('-multiscale', type=int, default=2,
                     help='Number of scales for downscaling')
 
 
@@ -101,8 +101,9 @@ if __name__ == "__main__":
         img_0 = img_0.astype(np.float32)
         img_1 = img_1.astype(np.float32)
 
+        factor = 2**scale
         intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 * (0.25**scale), \
-                bins=args.bins, s=args.search_range, subscale=scale)
+                bins=args.bins, s=args.search_range, f=factor)
         
         # For downscale_lebrun, the noise can be restored to the original level 
         # variances *= 4**scale

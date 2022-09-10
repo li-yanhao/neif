@@ -857,7 +857,7 @@ from skimage.util.shape import view_as_blocks
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def estimate_intensity_and_variance(blks_ref, blks_mov,
-                                    T: int, q: float, scale:int):
+                                    T: int, q: float, factor:int):
     """ Select block pairs of a bin and compute an intensity and a noise variance
         (See Algo. 4 of Sec. 5 in the paper)
 
@@ -871,8 +871,8 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         frequency separator
     q: float
         percentile of selected blocks for estimation
-    scale: int
-        subsample the blocks at the specific scale, 0 for no subscaling
+    factor: int
+        subscaling factor
 
     Return
     ------
@@ -884,10 +884,9 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
 
     # if scale is not 0, subscale the dct blocks
     # (See Algo. 9 of Sec. 8 in the paper)
-    if scale > 0:
+    if factor > 1:
         N, W, _ = blks_ref.shape
 
-        factor = 2 ** scale
         assert W % factor == 0, "The block size must be multiple of the subsample factor"
         w = W // factor
 
