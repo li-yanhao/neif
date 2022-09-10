@@ -14,9 +14,6 @@ parser.add_argument('im_0', type=str,
                     help='First frame filename')
 parser.add_argument('im_1', type=str,
                     help='Second frame filename')
-# parser.add_argument('out', type=str,
-#                     help='Output curve filename')
-
 parser.add_argument('-bins', type=int, default=16,
                     help='Number of bins')
 parser.add_argument('-quantile', type=float, default=5,
@@ -91,6 +88,9 @@ if __name__ == "__main__":
     print("###### Output ###### \n")
 
     while scale <= args.multiscale:
+        if scale < 2: 
+            scale += 1
+            continue
         # if scale > 0:
             # img_0 = utils.downscale(img_0, antialias=False)
             # img_1 = utils.downscale(img_1, antialias=False)
@@ -129,8 +129,8 @@ if __name__ == "__main__":
         # cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
 
         if args.add_noise == True:
-            a = args.noise_a / 4**scale
-            b = args.noise_b / 4**scale
+            a = args.noise_a # / 4**scale
+            b = args.noise_b # / 4**scale
 
             utils.plot_noise_curve(intensities, variances, a=a, b=b, fname=f"curve_s{scale}.png")
 

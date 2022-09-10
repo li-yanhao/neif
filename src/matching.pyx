@@ -66,7 +66,6 @@ cdef extern from "float.h":
 def img_direction(img, k):
     """ Divide 360 degrees into k ranges, compute the gradient directions of each pixel and 
         map with the directions with an integer in [0, k-1].
-        (See algo. 1 of sec. 5.1 in the paper)
 
     Parameters
     ----------
@@ -118,7 +117,6 @@ def img_blur(img):
 @cython.wraparound(False)
 def integral_image(T_t[:, :] img, int H, int W):
     """ Compute integral image
-        (See algo. 3 of sec. 5.1 in the paper)
 
     Parametes
     ---------
@@ -164,7 +162,7 @@ def integral_image(T_t[:, :] img, int H, int W):
 @cython.wraparound(False)
 cdef inline np.uint32_t compute_cost(np.uint32_t[:, :] img_int, int pi, int pj, int w):
     """ Compute the sum of costs in a block using integral image
-        (See algo. 4 of sec. 5.1 in the paper)
+
     Parameters
     ----------
     img_int: np.ndarray
@@ -193,7 +191,6 @@ cdef inline np.uint32_t compute_cost(np.uint32_t[:, :] img_int, int pi, int pj, 
     else:
         cost = img_int[pi + w - 1, pj + w - 1]
 
-
     return cost
 
 
@@ -201,6 +198,7 @@ cdef inline np.uint32_t compute_cost(np.uint32_t[:, :] img_int, int pi, int pj, 
 @cython.wraparound(False)
 def convolve2d_sum(np.ndarray img, int h, int w):
     """ Given a raw image, compute the sums of overlapping blocks
+        (See Algo. 2 of Sec. 5 in the paper)
 
     Parameters
     ----------
@@ -245,7 +243,7 @@ cdef inline int dist(np.int8_t x, np.int8_t y, int k):
 @cython.wraparound(False)
 def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, int w, int th, int s):
     """ Dividing two images into wxw blocks. For each block in img_ref search the matched block in img_mov within a search range.
-        (See algo. 2 of sec. 5.2 in the paper)
+        (See Algo. 1 of Sec. 5 in the paper)
 
     Parameters
     ----------
@@ -268,17 +266,11 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
         2D positions of w*w blocks in img_mov, of size (N, 2)
     """
 
-    # print(img_ref.shape)
-    # print(img_mov.shape)
     assert img_ref.shape[0] == img_mov.shape[0]
     assert img_ref.shape[1] == img_mov.shape[1]
 
     cdef int H = img_ref.shape[0]
     cdef int W = img_ref.shape[1]
-
-    # DEBUG
-    # cdef np.ndarray img_blur_ref = img_ref.copy().astype(np.int64)
-    # cdef np.ndarray img_blur_mov = img_mov.copy().astype(np.int64)
 
     cdef np.ndarray img_blur_ref = img_blur(img_ref)
     cdef np.ndarray img_blur_mov = img_blur(img_mov)
@@ -371,7 +363,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
 cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
     """ Compute the low frequency energy of a DCT block
-        (See algo. 8 of sec. 5.4 in the paper)
+        (See Algo. 5 of Sec. 5 in the paper)
     
     Parameters
     ----------
@@ -403,7 +395,6 @@ cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
 def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
         np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int T, float q):
     """ Select a percentile of block pairs whose difference have the least low-frequency energies
-        (See algo. 7 of sec. 5.4 in the paper)
 
     Parameters
     ----------
@@ -463,7 +454,6 @@ def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
 @cython.wraparound(False)
 def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
     """ Select a percentile of block pairs whose difference have the least low-frequency energies
-        (See algo. 7 of sec. 5.4 in the paper)
 
     Parameters
     ----------
@@ -520,7 +510,7 @@ def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
 def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
               np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int b):
     """ Partition the block pairs into bins according to their mean intensities
-        (See algo. 6 of sec. 5.3 in the paper)
+        (See Algo. 3 of Sec. 5 in the paper)
 
     Parameters
     ----------
@@ -651,7 +641,6 @@ def upsample_image(img_in, ups_factor):
 def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     """ Compute the blocks in the moving image that match the blocks in the reference image
         by matching their surrounding rings in subpixelic precision
-        (See algo. 5 of sec. 5.2 in the paper)
 
     Parameters
     ----------
@@ -762,7 +751,6 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     #     if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
     #         pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
 
-    #     from datetime import datetime
     #     print(f"find_best_matching_func begins at {datetime.now()}")
     #     pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
         
@@ -792,7 +780,6 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 @cython.wraparound(False)
 def compute_variance_from_pairs(blks_ref, blks_mov, T):
     """ Compute noise variance from block pairs
-        (See Algo. ? of Sec. ? in the paper)
     
     Parameters
     ----------
@@ -871,25 +858,34 @@ from skimage.util.shape import view_as_blocks
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def estimate_variance_from_differences(
-    blks_ref, blks_mov,
-    T: int, q: float, scale:int):
-    """
+def estimate_intensity_and_variance(blks_ref, blks_mov,
+                                    T: int, q: float, scale:int):
+    """ Select block pairs of a bin and compute an intensity and a noise variance
+        (See Algo. 4 of Sec. 5 in the paper)
+
     Parameters
     ----------
-    blks_ref: blocks in reference frame, in shape (N, w, w)
-    blks_mov: blocks in moving frame, in shape (N, w, w)
-    T: frequency separator
-    q: percentile of selected blocks for estimation
-    scale: (optional) subsample the blocks at the specific scale
+    blks_ref: np.ndarray
+        blocks in reference frame, in shape (N, w, w)
+    blks_mov: np.ndarray
+        blocks in moving frame, in shape (N, w, w)
+    T: int
+        frequency separator
+    q: float
+        percentile of selected blocks for estimation
+    scale: int
+        subsample the blocks at the specific scale, 0 for no subscaling
 
     Return
     ------
-    variance: noise variance from the blocks of differences
-
+    intensity: float
+        mean intensity of the selected block pairs
+    variance: float
+        noise variance from the selected inter-block differences
     """    
 
-    # if scale is not 0, subsample the dct blocks
+    # if scale is not 0, subscale the dct blocks
+    # (See Algo. 9 of Sec. 8 in the paper)
     if scale > 0:
         N, W, _ = blks_ref.shape
 
@@ -898,11 +894,15 @@ def estimate_variance_from_differences(
         w = W // factor
 
         blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        # blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_ref.transpose((0, 3, 4, 1, 2))
         blks_ref = blks_ref.reshape(-1, w, w)
 
+        # blks_ref = blks_ref.reshape(-1, w, w)
+
         blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        # blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_mov.transpose((0, 3, 4, 1, 2))
         blks_mov = blks_mov.reshape(-1, w, w)
 
     N, w, _ = blks_ref.shape
@@ -938,10 +938,3 @@ def estimate_variance_from_differences(
     intensity = (blks_mov[I].mean() + blks_ref[I].mean()) / 2
 
     return intensity, var
-
-
-
-
-
-
-
