@@ -42,7 +42,7 @@ frame t             |  frame t+1
 ![](frame0.png)  |  ![](frame1.png)
 
 ``` bash
-python main.py frame0.png frame1.png curve.png
+python main.py frame0.png frame1.png
 ```
 
 The output is:

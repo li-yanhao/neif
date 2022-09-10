@@ -547,8 +547,6 @@ def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, 
     bins_pos_ref = pos_ref[I_in_bins]
     bins_pos_mov = pos_mov[I_in_bins]
 
-    # return L
-
     return bins_pos_ref, bins_pos_mov
 
 

@@ -20,17 +20,15 @@ parser.add_argument('-quantile', type=float, default=5,
                     help='Percentage of quantile, in %')
 parser.add_argument('-search_range', type=int, default=5,
                     help='Search range of patch matching')
-parser.add_argument('-w', type=int, default=20,
+parser.add_argument('-w', type=int, default=8,
                     help='Block size')
-parser.add_argument('-T', type=int, default=21,
+parser.add_argument('-T', type=int, default=9,
                     help='Frequency separator')
 parser.add_argument('-th', type=int, default=3,
                     help='Thickness of ring for patch matching')
 parser.add_argument('-demosaic', default=False,
                     help='Whether demosaicing is processed before'
                     'noise estimation', action='store_true')
-parser.add_argument('-multiscale', type=int, default=2,
-                    help='Number of scales for downscaling')
 parser.add_argument('-add_noise', default=False,
                     help='True for adding simulated noise',
                     action='store_true')
@@ -38,6 +36,8 @@ parser.add_argument('-noise_a', type=float, default=3,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=3,
                     help='Noise model parameter: b')
+parser.add_argument('-multiscale', type=int, default=0,
+                    help='Number of scales for downscaling')
 
 
 args = parser.parse_args()
@@ -88,9 +88,6 @@ if __name__ == "__main__":
     print("###### Output ###### \n")
 
     while scale <= args.multiscale:
-        if scale < 2: 
-            scale += 1
-            continue
         # if scale > 0:
             # img_0 = utils.downscale(img_0, antialias=False)
             # img_1 = utils.downscale(img_1, antialias=False)
@@ -105,7 +102,7 @@ if __name__ == "__main__":
         img_1 = img_1.astype(np.float32)
 
         intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 * (0.25**scale), \
-                bins=args.bins, s=args.search_range, scale=scale)
+                bins=args.bins, s=args.search_range, subscale=scale)
         
         # For downscale_lebrun, the noise can be restored to the original level 
         # variances *= 4**scale
