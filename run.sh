@@ -65,12 +65,12 @@ out_curve=${@:$OPTIND+2:1}
 #####################
 # TEST in local env #
 #####################
-main=./main.py
+# main=./main.py
 # img_0="frame0.png"
 # img_1="frame1.png"
 
-img_0="/Users/yli/phd/ipol_noise_estimation/room_0.png"
-img_1="/Users/yli/phd/ipol_noise_estimation/room_1.png"
+# img_0="/Users/yli/phd/ipol_noise_estimation/room_0.png"
+# img_1="/Users/yli/phd/ipol_noise_estimation/room_1.png"
 
 # img_0="/Users/yli/phd/ipol_noise_estimation/room_0.png"
 # img_1="/Users/yli/phd/ipol_noise_estimation/room_1.png"
@@ -82,7 +82,7 @@ img_1="/Users/yli/phd/ipol_noise_estimation/room_1.png"
 #####################
 #      IPOL env     #
 #####################
-# main=$bin/neif/main.py
+main=$bin/neif/main.py
 
 #####################
 #   Main execution  #

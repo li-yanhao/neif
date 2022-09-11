@@ -392,7 +392,7 @@ cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
+def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
         np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int T, float q):
     """ Select a percentile of block pairs whose difference have the least low-frequency energies
 
@@ -411,14 +411,14 @@ def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
     q: float
-        percentile of filtered blocks
+        percentile of selected blocks
 
     Returns
     -------
-    pos_filtered_ref: np.ndarray
+    pos_selected_ref: np.ndarray
         Selected block positions in reference image, of size (M, 2),
         with M = floor(N * q)
-    pos_filtered_mov: np.ndarray
+    pos_selected_mov: np.ndarray
         Selected block positions in moving image, of size (M, 2)
     """
 
@@ -444,15 +444,15 @@ def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
 
     I = np.argsort(E)[:int(N * q)]
 
-    pos_filtered_ref = pos_ref[I]
-    pos_filtered_mov = pos_mov[I]
+    pos_selected_ref = pos_ref[I]
+    pos_selected_mov = pos_mov[I]
 
-    return pos_filtered_ref, pos_filtered_mov
+    return pos_selected_ref, pos_selected_mov
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
+def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
     """ Select a percentile of block pairs whose difference have the least low-frequency energies
 
     Parameters
@@ -464,14 +464,14 @@ def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
     q: float
-        percentile of filtered blocks
+        percentile of selected blocks
 
     Returns
     -------
-    pos_filtered_ref: np.ndarray
+    pos_selected_ref: np.ndarray
         Selected blocks in reference image, of size (M, w, w),
         with M = floor(N * q)
-    pos_filtered_mov: np.ndarray
+    pos_selected_mov: np.ndarray
         Selected blocks in moving image, of size (M, w, w)
     """
 
@@ -499,10 +499,10 @@ def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
 
     I = np.argsort(E)[:int(N * q)]
 
-    blks_filtered_ref = blks_ref[I]
-    blks_filtered_mov = blks_mov[I]
+    blks_selected_ref = blks_ref[I]
+    blks_selected_mov = blks_mov[I]
 
-    return blks_filtered_ref, blks_filtered_mov
+    return blks_selected_ref, blks_selected_mov
 
 
 @cython.boundscheck(False)
@@ -776,7 +776,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def compute_variance_from_pairs(blks_ref, blks_mov, T):
+def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
     """ Compute noise variance from block pairs
     
     Parameters
@@ -787,6 +787,8 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T):
         Blocks in moving image of size (N, w, w)
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
+    factor: int
+        Subscaling factor
 
     Returns
     -------
@@ -797,6 +799,24 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T):
     assert blks_ref.shape == blks_mov.shape
     cdef int N = blks_ref.shape[0]
     cdef int w = blks_ref.shape[1]
+
+    if factor > 1:
+        N, W, _ = blks_ref.shape
+
+        assert W % factor == 0, "The block size must be multiple of the subsample factor"
+        w = W // factor
+
+        blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        # blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_ref.transpose((0, 3, 4, 1, 2))
+        blks_ref = blks_ref.reshape(-1, w, w)
+
+        # blks_ref = blks_ref.reshape(-1, w, w)
+
+        blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        # blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
+        blks_mov.transpose((0, 3, 4, 1, 2))
+        blks_mov = blks_mov.reshape(-1, w, w)
 
     # blks_diff = blks_mov - blks_ref
     dct_blks_ref = dctn(blks_mov - blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
@@ -857,7 +877,7 @@ from skimage.util.shape import view_as_blocks
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def estimate_intensity_and_variance(blks_ref, blks_mov,
-                                    T: int, q: float, scale:int):
+                                    T: int, factor:int):
     """ Select block pairs of a bin and compute an intensity and a noise variance
         (See Algo. 4 of Sec. 5 in the paper)
 
@@ -869,10 +889,8 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         blocks in moving frame, in shape (N, w, w)
     T: int
         frequency separator
-    q: float
-        percentile of selected blocks for estimation
-    scale: int
-        subsample the blocks at the specific scale, 0 for no subscaling
+    fact: int
+        Subscaling factor. 1 for non subscaling
 
     Return
     ------
@@ -882,12 +900,11 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         noise variance from the selected inter-block differences
     """    
 
-    # if scale is not 0, subscale the dct blocks
+    # subscale the block differences
     # (See Algo. 9 of Sec. 8 in the paper)
-    if scale > 0:
+    if factor > 1:
         N, W, _ = blks_ref.shape
 
-        factor = 2 ** scale
         assert W % factor == 0, "The block size must be multiple of the subsample factor"
         w = W // factor
 
@@ -909,30 +926,29 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
     dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
     
     # Low-frequency energy
-    cdef np.ndarray E = np.zeros(N, dtype=np.float32)
-    cdef np.float32_t[:] E_view = E
+    # cdef np.ndarray E = np.zeros(N, dtype=np.float32)
+    # cdef np.float32_t[:] E_view = E
 
-    cdef np.float32_t[:, :, :] dct_blks_view = dct_blks
-    cdef np.float32_t[:, :] dct_blk_view
+    # cdef np.float32_t[:, :, :] dct_blks_view = dct_blks
+    # cdef np.float32_t[:, :] dct_blk_view
 
-    cdef int i
-    for i in xrange(N):
-        dct_blk_view = dct_blks_view[i]
-        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
+    # cdef int i
+    # for i in xrange(N):
+        # dct_blk_view = dct_blks_view[i]
+        # E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
 
-    I = np.argsort(E)[:int(N * q)]
+    # I = np.argsort(E)[:int(N * q)]
 
-    dct_blks_good = dct_blks[I] # (n, w, w)
-
+    # dct_blks_good = dct_blks[I] # (n, w, w)
 
     VH = []
     for i in xrange(w):
         for j in xrange(w):
             if i + j > T:
-                VH.append(np.mean(dct_blks_good[:, i, j] ** 2))
+                VH.append(np.mean(dct_blks[:, i, j] ** 2))
     
-    var = np.median( np.array(VH) ) / 2
+    variance = np.median( np.array(VH) ) / 2
 
-    intensity = (blks_mov[I].mean() + blks_ref[I].mean()) / 2
+    intensity = (blks_mov.mean() + blks_ref.mean()) / 2
 
-    return intensity, var
+    return intensity, variance
