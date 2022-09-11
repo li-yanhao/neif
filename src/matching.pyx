@@ -363,7 +363,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
 cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
     """ Compute the low frequency energy of a DCT block
-        (See Algo. 5 of Sec. 5 in the paper)
+        (See Algo. 6 of Sec. 5 in the paper)
     
     Parameters
     ----------
@@ -395,6 +395,7 @@ cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
 def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
         np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int T, float q):
     """ Select a percentile of block pairs whose difference have the least low-frequency energies
+        (See Algo. 4 of Sec. 5 in the paper)
 
     Parameters
     ----------
@@ -778,7 +779,8 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
 @cython.wraparound(False)
 def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
     """ Compute noise variance from block pairs
-    
+        (See Algo. 5 of Sec. 5 in the paper)
+
     Parameters
     ----------
     blks_ref: ndarray
@@ -800,33 +802,35 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
     cdef int N = blks_ref.shape[0]
     cdef int w = blks_ref.shape[1]
 
+    blks_diff = blks_mov - blks_ref
+
+    # Subscaling the block differences, see Algo. 5 of Sec. 5 in the paper
     if factor > 1:
         N, W, _ = blks_ref.shape
 
         assert W % factor == 0, "The block size must be multiple of the subsample factor"
         w = W // factor
 
-        blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
-        blks_ref.transpose((0, 3, 4, 1, 2))
-        blks_ref = blks_ref.reshape(-1, w, w)
+        blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        blks_diff.transpose((0, 3, 4, 1, 2))
+        blks_diff = blks_diff.reshape(-1, w, w)
 
+        # blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        # blks_ref.transpose((0, 3, 4, 1, 2))
         # blks_ref = blks_ref.reshape(-1, w, w)
 
-        blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
-        blks_mov.transpose((0, 3, 4, 1, 2))
-        blks_mov = blks_mov.reshape(-1, w, w)
-
-    # blks_diff = blks_mov - blks_ref
-    dct_blks_ref = dctn(blks_mov - blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+        # blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        # blks_mov.transpose((0, 3, 4, 1, 2))
+        # blks_mov = blks_mov.reshape(-1, w, w)
+    
+    dct_blks_diff = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
     VH = []
     cdef int i, j
     for i in xrange(w):
         for j in xrange(w):
             if i + j > T:
-                VH.append(np.mean(dct_blks_ref[:, i, j] ** 2))
+                VH.append(np.mean(dct_blks_diff[:, i, j] ** 2))
     
     return np.median( np.array(VH) ) / 2
 
@@ -879,7 +883,6 @@ from skimage.util.shape import view_as_blocks
 def estimate_intensity_and_variance(blks_ref, blks_mov,
                                     T: int, factor:int):
     """ Select block pairs of a bin and compute an intensity and a noise variance
-        (See Algo. 4 of Sec. 5 in the paper)
 
     Parameters
     ----------

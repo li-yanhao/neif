@@ -26,7 +26,7 @@ from skimage.util import view_as_windows
 
 def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, f=1):
     """ Main function: estimate noise curves from two successive images
-        (See Algo. 6 of Sec. 5 and Algo. 8 of Sec. 8 in the paper)
+        (See Algo. 7 of Sec. 5 and Algo. 9 of Sec. 8 in the paper)
 
     Parameters
     ----------
@@ -253,7 +253,7 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
 
 def compute_median_curve(in_curves):
     """ Compute the median curve given a set of curves
-        (See Algo. 7 of Sec. 5 in the paper)
+        (See Algo. 8 of Sec. 5 in the paper)
 
     Parameters
     ----------
