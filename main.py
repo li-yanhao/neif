@@ -87,7 +87,9 @@ if __name__ == "__main__":
 
     print("###### Output ###### \n")
 
-    while scale <= args.multiscale:
+    for scale in range(args.multiscale+1):
+        # if scale < 2:
+        #     continue
         # if scale > 0:
             # img_0 = utils.downscale(img_0, antialias=False)
             # img_1 = utils.downscale(img_1, antialias=False)
@@ -104,7 +106,10 @@ if __name__ == "__main__":
         factor = 2**scale
         intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 * (0.25**scale), \
                 bins=args.bins, s=args.search_range, f=factor)
-        
+        # intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100 , \
+        #         bins=args.bins, s=args.search_range, f=factor)
+
+
         # For downscale_lebrun, the noise can be restored to the original level 
         # variances *= 4**scale
         
@@ -145,6 +150,5 @@ if __name__ == "__main__":
         else:
             utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
         
-        scale += 1
     
     print(f"time spent: {time.time() - start} s")

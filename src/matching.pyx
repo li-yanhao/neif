@@ -550,6 +550,45 @@ def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, 
     return bins_pos_ref, bins_pos_mov
 
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def partition_blocks(np.ndarray[T_t, ndim=3] blks_ref, np.ndarray[T_t, ndim=3] blks_mov, int w, int b):
+    """ Partition the block pairs into bins according to their mean intensities
+        (See Algo. 3 of Sec. 5 in the paper)
+
+    Parameters
+    ----------
+    blks_ref: np.ndarray
+        Blocks in reference image, of size (N, w, w)
+    blks_mov: np.ndarray
+        Blocks in moving image, of size (N, w, w)
+    w: int
+        Block size
+    b : int
+        number of bins
+
+    Returns
+    -------
+    bins_blks_ref: np.ndarray
+        Bins of block positions in reference image, of size (b, M, w, w), with M
+        the number of blocks per bin
+    bins_blks_mov: np.ndarray
+        Bins of block positions in moving image, of size (b, M, w, w)
+    """
+    
+
+    L = (np.mean(blks_ref, axis=(1, 2)) + np.mean(blks_mov, axis=(1, 2))) # (N, )
+    
+    I = np.argsort(L)
+    I_in_bins = I[:len(L) // b * b].reshape(b, -1)
+
+    bins_pos_ref = blks_ref[I_in_bins]
+    bins_pos_mov = blks_mov[I_in_bins]
+
+    return bins_pos_ref, bins_pos_mov
+
+
 # Interaction between numpy and native c
 # https://scipy-lectures.org/advanced/interfacing_with_c/interfacing_with_c.html
 

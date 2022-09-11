@@ -21,7 +21,7 @@
 import numpy as np
 import matching as M
 
-from skimage.util import view_as_windows
+from skimage.util import view_as_windows, view_as_blocks
 
 
 def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, f=1):
@@ -78,51 +78,77 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
         pos_ref, pos_mov = M.remove_saturated(
             img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up)
 
-        # remove blocks near the borders so that subpixel matching can work
-        border = 2
-        mask = (pos_mov[:, 0] >= border + th) & (pos_mov[:, 0] < H - w_up + 1 - th - border) \
-            & (pos_mov[:, 1] >= border + th) & (pos_mov[:, 1] < W - w_up + 1 - th - border)
-        pos_ref = pos_ref[mask]
-        pos_mov = pos_mov[mask]
 
-        pos_ref_in_bins, pos_mov_in_bins = M.partition(
-            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up, bins)
+        # pos_ref_in_bins, pos_mov_in_bins = M.partition(
+        #     img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up, bins)
 
-        pos_ref_filtered_in_bins = []
-        pos_mov_filtered_in_bins = []
+        # pos_ref_filtered_in_bins = []
+        # pos_mov_filtered_in_bins = []
 
-        for b in range(bins):
-            pos_ref = pos_ref_in_bins[b]
-            pos_mov = pos_mov_in_bins[b]
+        # for b in range(bins):
+            # pos_ref = pos_ref_in_bins[b]
+            # pos_mov = pos_mov_in_bins[b]
 
-            pos_ref_filtered_in_bins.append(pos_ref)
-            pos_mov_filtered_in_bins.append(pos_mov)
+            # pos_ref_filtered_in_bins.append(pos_ref)
+            # pos_mov_filtered_in_bins.append(pos_mov)
 
         # Merge the pairs together so that they are processed at once in subpixel matching
-        pos_ref_filtered_in_bins = np.vstack(pos_ref_filtered_in_bins)
-        pos_mov_filtered_in_bins = np.vstack(pos_mov_filtered_in_bins)
+        # pos_ref_filtered_in_bins = np.vstack(pos_ref_filtered_in_bins)
+        # pos_mov_filtered_in_bins = np.vstack(pos_mov_filtered_in_bins)
 
         blks_ref = view_as_windows(img_ref_chnl, (w_up, w_up), step=(1, 1))
         blks_mov = view_as_windows(img_mov_chnl, (w_up, w_up), step=(1, 1))
-        blks_ref_in_bins = blks_ref[pos_ref_filtered_in_bins[:,
-                                                             0], pos_ref_filtered_in_bins[:, 1]]
-        blks_mov_in_bins = blks_mov[pos_mov_filtered_in_bins[:,
-                                                             0], pos_mov_filtered_in_bins[:, 1]]
-        blks_ref_in_bins = blks_ref_in_bins.astype(np.float32)
-        blks_mov_in_bins = blks_mov_in_bins.astype(np.float32)
+
+        blks_ref = blks_ref[pos_ref[:, 0], pos_ref[:, 1]] # (N, w_up, w_up)
+        blks_mov = blks_mov[pos_mov[:, 0], pos_mov[:, 1]] # (N, w_up, w_up)
+        
+
+        if f > 1:
+            blks_ref = view_as_blocks(blks_ref, (1, f, f)).squeeze() # (N, w, w, f, f)
+            # blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, f, f, w, w)
+            blks_ref = blks_ref.transpose((0, 3, 4, 1, 2)).reshape(-1, w, w) # (N', w, w)
+
+            blks_mov = view_as_blocks(blks_mov, (1, f, f)).squeeze() # (N, w, w, f, f)
+            blks_mov = blks_mov.transpose((0, 3, 4, 1, 2)).reshape(-1, w, w) # (N', w, w)
+
+
+        blks_ref_in_bins, blks_mov_in_bins = M.partition_blocks(blks_ref, blks_mov, w, bins)
+
+        print(blks_ref_in_bins.shape)
+
+
+        # blks_ref_in_bins = []
+        # blks_mov_in_bins = []
+
+        # for b in range(bins):
+        #     pos_ref = pos_ref_in_bins[b]
+        #     blks_ref_in_bins.append(blks_ref[pos_ref[:,
+        #                                                      0], pos_ref[:, 1]])
+
+        #     pos_mov = pos_mov_in_bins[b]
+        #     blks_mov_in_bins.append(blks_mov[pos_mov[:,
+        #                                                      0], pos_mov[:, 1]])
+
+        # blks_ref_in_bins = blks_ref[pos_ref_filtered_in_bins[:,
+        #                                                      0], pos_ref_filtered_in_bins[:, 1]]
+        # blks_mov_in_bins = blks_mov[pos_mov_filtered_in_bins[:,
+        #                                                      0], pos_mov_filtered_in_bins[:, 1]]
+        
+        blks_ref_in_bins = np.array(blks_ref_in_bins).astype(np.float32)
+        blks_mov_in_bins = np.array(blks_mov_in_bins).astype(np.float32)
 
         # blks_ref_filtered and blks_mov_filtered are already sorted by their intensities
-        blks_ref_in_bins = blks_ref_in_bins[:int(
-            len(blks_ref_in_bins) // bins * bins)].reshape(bins, -1, w_up, w_up)
-        blks_mov_in_bins = blks_mov_in_bins[:int(
-            len(blks_mov_in_bins) // bins * bins)].reshape(bins, -1, w_up, w_up)
+        # blks_ref_in_bins = blks_ref_in_bins[:int(
+        #     len(blks_ref_in_bins) // bins * bins)].reshape(bins, -1, w_up, w_up)
+        # blks_mov_in_bins = blks_mov_in_bins[:int(
+        #     len(blks_mov_in_bins) // bins * bins)].reshape(bins, -1, w_up, w_up)
 
         for b in range(bins):
             blks_ref = blks_ref_in_bins[b]
             blks_mov = blks_mov_in_bins[b]
 
             intensity, variance = M.estimate_intensity_and_variance(
-                blks_mov, blks_ref, T, q, f)
+                blks_mov, blks_ref, T, q, 1)
 
             variances[ch, b] = variance
             intensities[ch, b] = intensity
