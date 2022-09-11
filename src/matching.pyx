@@ -440,7 +440,7 @@ def filter_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     cdef int i
     for i in xrange(N):
         dct_blk_view = dct_blks_diff_view[i]
-        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
+        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T) / dct_blk_view[0, 0]
 
     I = np.argsort(E)[:int(N * q)]
 
@@ -485,17 +485,20 @@ def filter_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
     cdef np.float32_t[:] E_view = E
     
-    dct_blks_ref = dctn(blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    dct_blks_diff = dct_blks_ref - dct_blks_mov
+    # dct_blks_ref = dctn(blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    # dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
     cdef np.float32_t[:, :] dct_blk_view
 
+    intensities = (blks_ref.mean(axis=(-1, -2)) + blks_mov.mean(axis=(-1, -2))) / 2
+    cdef np.float32_t[:] intensities_view = intensities
+
     cdef int i
     for i in xrange(N):
         dct_blk_view = dct_blks_diff_view[i]
-        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
+        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T) / intensities_view[i]
 
     I = np.argsort(E)[:int(N * q)]
 
