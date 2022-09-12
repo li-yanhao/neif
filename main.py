@@ -36,7 +36,7 @@ parser.add_argument('-noise_a', type=float, default=3,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=3,
                     help='Noise model parameter: b')
-parser.add_argument('-multiscale', type=int, default=2,
+parser.add_argument('-multiscale', type=int, default=0,
                     help='Number of scales for downscaling')
 
 

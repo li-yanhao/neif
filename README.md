@@ -1,7 +1,16 @@
-# Video Signal-Dependent Noise Estimation via Inter-Frame Prediction
+# A SIGNAL-DEPENDENT VIDEO NOISE ESTIMATOR VIA INTER-FRAME SIGNAL SUPPRESSION
+
 
 This code is written in python with some cython code for acceleration.
 The program is tested in python3.8, and should also work for other versions of python3.
+
+
+Online demo is on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
+
+Version 1.0 released on 12/09/2022.
+
+Contact: Yanhao Li ( yanhao {dot} li {at} outlook {dot} com )
+
 
 ## Install
 
@@ -26,8 +35,8 @@ from src.estimate import estimate_noise_curve
 # using default parameters
 intensities, variances = estimate_noise_curve(img_0, img_1)
 
-# or using custom parameters
-intensities, variances = estimate_noise_curve(img_0, img_1, w=..., T=..., th=..., q=..., bins=..., s=...)
+# or using custom parameters (see the function description for the use of parameters)
+intensities, variances = estimate_noise_curve(img_0, img_1, w=..., T=..., th=..., q=..., bins=..., s=..., f=...)
 
 
 ```
@@ -48,22 +57,26 @@ python main.py frame0.png frame1.png
 The output is:
 ``` bash
 Parameters:
-Namespace(T=21, add_noise=False, bins=16, demosaic=False, im_0='frame0.png', im_1='frame1.png', noise_a=3, noise_b=3, out='curve.png', quantile=5, search_range=5, th=3, w=20)
+Namespace(T=-1, add_noise=False, bins=16, demosaic=False, im_0='frame0.png', im_1='frame1.png', multiscale=0, noise_a=3, noise_b=3, quantile=5, search_range=5, th=3, w=8)
+
+###### Output ###### 
+Parameters:
+Namespace(T=-1, add_noise=False, bins=16, demosaic=False, im_0='frame0.png', im_1='frame1.png', multiscale=0, noise_a=3, noise_b=3, quantile=5, search_range=5, th=3, w=8)
 
 ###### Output ###### 
 
 intensities:
-[[ 10.48796082  15.10054016  18.94290733  21.35827637  23.31756401
-   25.45682907  27.76812363  29.92989731  32.45368958  35.26985168
-   39.89092255  44.3742218   49.48804855  73.16560364  93.31019592
-  145.20797729]] 
+[[ 10.87425613  14.6869421   17.64328384  20.18724823  22.4411869
+   24.70471954  26.92080116  29.29936409  31.69148064  34.67023849
+   38.94697571  44.32183456  49.53039932  75.42604065  96.12397766
+  140.07905579]] 
 
 noise variances:
-[[ 2.56940198  3.4787209   4.21287107  4.53424597  4.98650312  5.40994263
-   6.12378454  6.35898161  6.89056873  7.62035799  8.60838223  9.24898338
-  11.23215771 18.21870422 19.52795792 30.63466454]] 
+[[ 2.75614262  3.46342993  4.06296873  4.23521328  4.80944681  5.42198753
+   5.72610235  6.65154648  6.62480831  7.52370214  8.50011253  9.52011967
+  10.69717789 18.39974976 20.59931374 29.30751991]] 
 
-spent time: 7.277174472808838 s
+time spent: 2.338838815689087 s
 
 ```
 
@@ -72,4 +85,5 @@ The plotted noise curve:
 <!-- ![](curve.png | width=100) -->
 
 
-<img src="curve.png" alt="alt text" width="600"/>
+<img src="curve_s0.png" alt="alt text" width="600"/>
+
