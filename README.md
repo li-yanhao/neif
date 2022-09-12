@@ -1,5 +1,4 @@
-# A SIGNAL-DEPENDENT VIDEO NOISE ESTIMATOR VIA INTER-FRAME SIGNAL SUPPRESSION
-
+# A Signal-Dependent Video Noise Estimator via Inter-frame Signal Suppression
 
 This code is written in python with some cython code for acceleration.
 The program is tested in python3.8, and should also work for other versions of python3.

@@ -1,5 +1,5 @@
 // This file is part of the algorithm 
-// "Video Signal-Dependent Noise Estimation via Inter-Frame Prediction"
+// "A Signal-Dependent Video Noise Estimator via Inter-frame Signal Suppression"
 
 
 // Copyright (c) 2022 Yanhao Li
