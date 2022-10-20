@@ -11,6 +11,7 @@ quantile=5
 demosaic=""
 multiscale=2
 prec_lvl=0
+# add_noise="-add_noise"
 add_noise=""
 noise_a="0.2"
 noise_b="0.2"
@@ -96,9 +97,10 @@ command="python $main $img_0 $img_1 \
     -search_range $search_range \
     -noise_a $noise_a \
     -noise_b $noise_b \
+    -multiscale $multiscale \
     $add_noise \
     $demosaic"
 
-echo $command
+# echo $command
 $command
 

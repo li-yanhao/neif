@@ -1,10 +1,11 @@
-# A Signal-Dependent Video Noise Estimator via Inter-frame Signal Suppression
-
-This code is written in python with some cython code for acceleration.
-The program is tested in python3.8, and should also work for other versions of python3.
+# Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction
 
 
-Online demo is on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
+This code is written in python with a part of cython code for acceleration.
+The program has been tested in python3.8, and should also work for other versions of python3.
+
+
+Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
 
 Version 1.0 released on 12/09/2022.
 
@@ -29,16 +30,54 @@ python setup.py build_ext -i
 ``` python
 from src.estimate import estimate_noise_curve
 
-# img_0 and img_1 are 8-bit images
 
 # using default parameters
-intensities, variances = estimate_noise_curve(img_0, img_1)
+intensities, variances = estimate_noise_curve(img_ref, img_mov)
 
 # or using custom parameters (see the function description for the use of parameters)
-intensities, variances = estimate_noise_curve(img_0, img_1, w=..., T=..., th=..., q=..., bins=..., s=..., f=...)
+intensities, variances = estimate_noise_curve(img_ref, img_mov, w=..., T=..., th=..., q=..., bins=..., s=..., f=...)
 
 
 ```
+
+Parameters:
+
+- img_ref: np.ndarray,
+
+  Reference image of size (C, H, W)
+  
+- img_mov: np.ndarray
+  
+  Moving image of size (C, H, W)
+    
+- w: int
+        
+  Block size
+    
+- T: int
+  
+  Threshold for separating the entries for low and high frequency DCT coefficents
+
+- th: int
+  
+  Thickness of surrounding ring for matching
+
+- q: float
+  
+  Percentile of blocks used for estimation
+
+- bins: int
+  
+  Number of bins
+
+- s: int
+        
+  Half of search range for patch matching. 
+  Note that the range of a squared search region window = search_range * 2 + 1
+
+- f: int
+  
+  The scale factor if estimate noise at a higher scale. Basically the block pairs of size `f*w` are selected, then are downscaled at size `w`, and finally the noise variance is estimated from the high frequencies of the downscaled block pairs.
 
 
 ## Demo
@@ -86,3 +125,13 @@ The plotted noise curve:
 
 <img src="curve_s0.png" alt="alt text" width="600"/>
 
+# Citation
+If you use this code for your research, please cite our paper.
+```
+@inproceedings{li2022video,
+  title={Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction},
+  author={Yanhao Li, Marina Gardella, Quentin Bammey, Tina Nikoukhah, Rafael Grompone von Gioi, Miguel Colom, Jean-Michel Morel},
+  booktitle={29th IEEE International Conference on Image Processing},
+  year={2022}
+}
+```

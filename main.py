@@ -54,8 +54,25 @@ if __name__ == "__main__":
     img_1 = utils.read_img(args.im_1, demosaic=args.demosaic)
 
     if args.add_noise == True:
-        img_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
-        img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
+        img_0_noisy = utils.add_noise(img_0, args.noise_a, args.noise_b)
+        img_1_noisy = utils.add_noise(img_1, args.noise_a, args.noise_b)
+
+        noise_0 = img_0_noisy - img_0
+        noise_1 = img_1_noisy - img_1
+
+        # scale noise for visualization
+        max_val = np.max((np.max(noise_0), np.max(noise_1)))
+        noise_0 = np.uint8(np.abs(noise_0) / max_val * 255)
+        noise_1 = np.uint8(np.abs(noise_1) / max_val * 255)
+        print(noise_0.shape)
+        noise_0 = np.transpose(noise_0, (1, 2, 0))
+        noise_1 = np.transpose(noise_1, (1, 2, 0))
+        cv2.imwrite(f"noise_0.png", noise_0)
+        cv2.imwrite(f"noise_1.png", noise_1)
+
+        img_0 = img_0_noisy
+        img_1 = img_1_noisy
+        
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")
