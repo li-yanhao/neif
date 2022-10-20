@@ -42,42 +42,24 @@ intensities, variances = estimate_noise_curve(img_ref, img_mov, w=..., T=..., th
 
 Parameters:
 
-- img_ref: np.ndarray,
-
-  Reference image of size (C, H, W)
+- `img_ref`: np.ndarray. Reference image of size (C, H, W)
   
-- img_mov: np.ndarray
-  
-  Moving image of size (C, H, W)
+- `img_mov`: np.ndarray. Moving image of size (C, H, W)
     
-- w: int
-        
-  Block size
+- `w`: int. Block size
     
-- T: int
-  
-  Threshold for separating the entries for low and high frequency DCT coefficents
+- `T`: int. Threshold for separating the entries for low and high frequency DCT coefficents
 
-- th: int
-  
-  Thickness of surrounding ring for matching
+- `th`: int. Thickness of surrounding ring for matching
 
-- q: float
-  
-  Percentile of blocks used for estimation
+- `q`: float. Percentile of blocks used for estimation
 
-- bins: int
-  
-  Number of bins
+- `bins`: int. Number of bins
 
-- s: int
-        
-  Half of search range for patch matching. 
+- `s`: int. Half of search range for patch matching. 
   Note that the range of a squared search region window = search_range * 2 + 1
 
-- f: int
-  
-  The scale factor if estimate noise at a higher scale. Basically the block pairs of size `f*w` are selected, then are downscaled at size `w`, and finally the noise variance is estimated from the high frequencies of the downscaled block pairs.
+- `f`: int. The scale factor if estimate noise at a higher scale. Basically the block pairs of size `f*w` are selected, then are downscaled at size `w`, and finally the noise variance is estimated from the high frequencies of the downscaled block pairs.
 
 
 ## Demo
