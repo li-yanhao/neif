@@ -1,8 +1,18 @@
 # Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction
 
+This repo is the official implementation of
+the paper
+"Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction". 
 
-This code is written in python with a part of cython code for acceleration.
-The program has been tested in python3.8, and should also work for other versions of python3.
+## Abstract
+
+We propose a block-based signal-dependent noise estimation method on videos, that leverages inter-frame redundancy to separate noise from signal. Block matching is applied to find block pairs between two consecutive frames with similar signal. Then Ponomarenko’s method is extended by sorting pairs by their low-frequency energy and estimating noise in the high frequencies. Experiments on three datasets show that this method improves on the state of the art.
+
+
+## About the code
+
+The code is written in python with a part of cython code for acceleration.
+The program has been tested both on Linux and MacOS in python3.8, and should also work for other versions of python3.
 
 
 Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
