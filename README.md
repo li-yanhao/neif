@@ -121,9 +121,11 @@ The plotted noise curve:
 If you use this code for your research, please cite our paper.
 ```
 @inproceedings{li2022video,
-  title={Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction},
-  author={Yanhao Li, Marina Gardella, Quentin Bammey, Tina Nikoukhah, Rafael Grompone von Gioi, Miguel Colom, Jean-Michel Morel},
-  booktitle={29th IEEE International Conference on Image Processing},
-  year={2022}
+  title={Video Signal-Dependent Noise Estimation via Inter-Frame Prediction},
+  author={Li, Yanhao and Gardella, Marina and Bammey, Quentin and Nikoukhah, Tina and von Gioi, Rafael Grompone and Colom, Miguel and Morel, Jean-Michel},
+  booktitle={2022 IEEE International Conference on Image Processing (ICIP)},
+  pages={1406--1410},
+  year={2022},
+  organization={IEEE}
 }
 ```
