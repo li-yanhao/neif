@@ -1,4 +1,4 @@
-# Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction
+# Video Signal-Dependent Noise Estimation via Inter-frame Prediction
 
 This repo is the official implementation of
 the paper
