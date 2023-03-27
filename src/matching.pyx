@@ -294,15 +294,15 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     # TODO: parallelism
     # for off_i in prange(0, 2*s+1, nogil=True, num_threads=8):
     for off_i in range(0, 2*s+1):
-        for off_j in xrange(0, 2*s+1):
+        for off_j in range(0, 2*s+1):
             # img_blur_mov_cropped = img_blur_mov[off_i:(H-2*s+off_i), off_j:(W-2*s+off_j)]
             # img_diff_offsets[off_i, off_j] = img_blur_ref_cropped - img_blur_mov_cropped
             # img_diff_offsets[off_i, off_j] = img_diff_offsets[off_i, off_j] * img_diff_offsets[off_i, off_j]
 
 
             # img_diff_view = img_diff_offsets_view[off_i, off_j]
-            for i in xrange(0, H-2*s):
-                for j in xrange(0, W-2*s):
+            for i in range(0, H-2*s):
+                for j in range(0, W-2*s):
                     # TODO: update SSD metric in the paper
                     img_diff_offsets_view[off_i, off_j, i, j] = img_blur_ref_view[i+s, j+s] - img_blur_mov_view[i+off_i, j+off_j]
                     img_diff_offsets_view[off_i, off_j, i, j] = img_diff_offsets_view[off_i, off_j, i, j] * img_diff_offsets_view[off_i, off_j, i, j]
@@ -314,8 +314,8 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.float64)
     # cdef np.ndarray sum_of_outer_blks, sum_of_inner_blks
     
-    for off_i in xrange(2*s+1):
-        for off_j in xrange(2*s+1):
+    for off_i in range(2*s+1):
+        for off_j in range(2*s+1):
             cost_of_outer_blks = convolve2d_sum(img_diff_offsets[off_i, off_j], outer_sz, outer_sz) # (H - 2s - 2th - w + 1, ...)
             cost_of_inner_blks = convolve2d_sum(img_diff_offsets[off_i, off_j], w, w)[th:-th, th:-th] # (H - 2s - 2th - w + 1, ...)
             cost_of_offsets[off_i, off_j] = cost_of_outer_blks - cost_of_inner_blks
@@ -383,8 +383,8 @@ cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
     cdef float e = 0
     cdef int i, j
 
-    for i in xrange(w):
-        for j in xrange(w):
+    for i in range(w):
+        for j in range(w):
             if i + j <= T:
                 e = e + D[i, j] * D[i, j]
     return e
@@ -439,7 +439,7 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     cdef np.float32_t[:, :] dct_blk_view
 
     cdef int i
-    for i in xrange(N):
+    for i in range(N):
         dct_blk_view = dct_blks_diff_view[i]
         E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
 
@@ -494,7 +494,7 @@ def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
     cdef np.float32_t[:, :] dct_blk_view
 
     cdef int i
-    for i in xrange(N):
+    for i in range(N):
         dct_blk_view = dct_blks_diff_view[i]
         E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
 
@@ -827,8 +827,8 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
 
     VH = []
     cdef int i, j
-    for i in xrange(w):
-        for j in xrange(w):
+    for i in range(w):
+        for j in range(w):
             if i + j > T:
                 VH.append(np.mean(dct_blks_diff[:, i, j] ** 2))
     
@@ -936,7 +936,7 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
     # cdef np.float32_t[:, :] dct_blk_view
 
     # cdef int i
-    # for i in xrange(N):
+    # for i in range(N):
         # dct_blk_view = dct_blks_view[i]
         # E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
 
@@ -945,8 +945,8 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
     # dct_blks_good = dct_blks[I] # (n, w, w)
 
     VH = []
-    for i in xrange(w):
-        for j in xrange(w):
+    for i in range(w):
+        for j in range(w):
             if i + j > T:
                 VH.append(np.mean(dct_blks[:, i, j] ** 2))
     
