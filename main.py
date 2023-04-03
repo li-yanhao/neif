@@ -141,6 +141,8 @@ if __name__ == "__main__":
         print("noise variances:")
         print(variances, "\n")
 
+        print(f"time spent: {time.time() - start} s")
+
         # save image for result visualization
         # img_0_v = np.transpose(img_0, (1, 2, 0))
         # img_1_v = np.transpose(img_1, (1, 2, 0))
@@ -168,4 +170,4 @@ if __name__ == "__main__":
         
         scale += 1
     
-    print(f"time spent: {time.time() - start} s")
+    

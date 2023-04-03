@@ -41,7 +41,7 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     th: int
         Thickness of surrounding ring for matching
     q: float
-        Percentile of blocks used for estimation
+        Percentile of blocks used for estimation, in [0, 1]
     bins: int
         number of bins
     s: int
@@ -171,13 +171,11 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
 
         # blks_ref = view_as_windows(img_ref_chnl, (w, w), step=(1, 1))[pos_ref[:, 0], pos_ref[:, 1]]
         # blks_mov = view_as_windows(img_mov_chnl, (w, w), step=(1, 1))[pos_mov[:, 0], pos_mov[:, 1]]
-        # return pos_ref, pos_mov
 
         # intensities = M.partition(img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
 
         pos_ref_in_bins, pos_mov_in_bins = M.partition(
             img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
-        # return pos_ref_in_bins, pos_mov_in_bins
 
         pos_ref_selected_in_bins = []
         pos_mov_selected_in_bins = []

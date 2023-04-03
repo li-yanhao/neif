@@ -30,22 +30,27 @@ from skimage.util import view_as_windows, view_as_blocks
 from scipy.fft import dct, dctn, fft2, ifft2
 from scipy.signal import convolve2d
 from scipy import interpolate
+from scipy.ndimage import gaussian_filter
 
 import os
 
+from cython.parallel cimport prange
 
 # For debug use
 # from inspect import currentframe
 
 ########################################
 
-ctypedef fused T_t:
-    np.int32_t
-    float
+# ctypedef fused T_t:
+#     np.int32_t
+#     float
 
-ctypedef fused Tu_t:
-    np.int64_t
-    double
+# ctypedef fused Tu_t:
+#     np.int64_t
+#     double
+
+ctypedef double T_t
+T = np.float64
 
 # ctypedef np.int32_t T_t
 # T = np.int32
@@ -113,6 +118,26 @@ def img_blur(img):
     return img_blur
 
 
+
+def img_blur(img):
+    """ Gaussian blur with typical 3x3 kernel
+
+    Parameters
+    ----------
+    img: np.ndarray
+        One channel input image
+    
+    Return
+    ------
+    img_blur: np.ndarray
+        Blurred image in float
+    """
+
+    # knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
+    # img_blur = convolve2d(img, knl, mode="same", boundary="symm")
+    img_blur = gaussian_filter(img, sigma=1, mode="nearest")
+    return img_blur
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def integral_image(T_t[:, :] img, int H, int W):
@@ -133,10 +158,10 @@ def integral_image(T_t[:, :] img, int H, int W):
         output integral image, of size (H, W)
 
     """
-    if T_t is int:
-        T = np.int64
-    else:
-        T = np.float64
+    # if T_t is int:
+    #     T = np.int64
+    # else:
+    T = np.float64
 
     cdef np.ndarray img_int = np.zeros((H, W), dtype=T)
     img_int[0] = np.cumsum(img[0])
@@ -285,14 +310,14 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef double[:, :] img_blur_ref_view = img_blur_ref
     cdef double[:, :] img_blur_mov_view = img_blur_mov
     
-    # cdef np.int32_t[:, :] img_diff_view
 
     img_blur_ref_cropped = img_blur_ref[s:(H-s), s:(W-s)]
 
     cdef int off_i, off_j, i, j
 
     # TODO: parallelism
-    # for off_i in prange(0, 2*s+1, nogil=True, num_threads=8):
+    # with nogil:
+    #     for off_i in prange(0, 2*s+1, num_threads=8):
     for off_i in range(0, 2*s+1):
         for off_j in range(0, 2*s+1):
             # img_blur_mov_cropped = img_blur_mov[off_i:(H-2*s+off_i), off_j:(W-2*s+off_j)]
@@ -412,7 +437,7 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
     q: float
-        percentile of selected blocks
+        percentile of selected blocks, in [0, 1]
 
     Returns
     -------
@@ -480,15 +505,12 @@ def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
     cdef int N = blks_mov.shape[0]
     cdef int w = blks_mov.shape[1]
 
-    # blks_ref = view_as_windows(img_ref, (w, w), step=(1, 1))[pos_ref[:,0], pos_ref[:, 1]] # (N, w, w)
-    # blks_mov = view_as_windows(img_mov, (w, w), step=(1, 1))[pos_mov[:,0], pos_mov[:, 1]] # (N, w, w)
-
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
     cdef np.float32_t[:] E_view = E
     
-    dct_blks_ref = dctn(blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    dct_blks_diff = dct_blks_ref - dct_blks_mov
+    # dct_blks_ref = dctn(blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    # dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
     cdef np.float32_t[:, :] dct_blk_view
@@ -562,7 +584,7 @@ cdef extern from "helper.h":
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
 
     void find_best_matching_one_shot(
-            float *img_ref, float *img_ups_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
+            float *img_ref, float *img_mov_ups, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
 
 
@@ -588,7 +610,7 @@ def find_best_matching_func(
                        img_ref.shape[0], img_ref.shape[1],
                        N, w, th, ups_factor,
                        <np.uint16_t*> np.PyArray_DATA(pos_mov))
-
+    
     return pos_mov
 
 
@@ -633,6 +655,29 @@ def upsample_image(img_in, ups_factor):
     img_ups = img_ups.astype(np.float32)
 
     return img_ups
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def blocks_from_image(img, blk_sz, pos):
+    """
+    Parameters
+    ----------
+    img: ndarray
+        Image of size (H, W)
+    blk_sz: int
+        Block size, suppose the blocks are squared.
+    pos: ndarray
+        Positions of the blocks, of size (N, 2)
+
+    Return
+    ------
+    blocks: ndarray
+        Selected blocks according to the block positions, of size (N, blk_sz, blk_sz)
+    """
+
+    blocks = view_as_windows(img, (blk_sz, blk_sz), step=(1, 1))[pos[:, 0], pos[:, 1]]
+    return blocks
     
 
 @cython.boundscheck(False)
@@ -674,11 +719,8 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     sz_patch = w + 2 * th
 
     # sz_patch_iter = sz_patch
-    w_up = w
-    th_up = th
-
-    # pos_ref_up = pos_ref.copy()
-    # pos_mov_up = pos_mov_init.copy()
+    w_ups = w
+    th_ups = th
 
     # TODO: add to IPOL paper
     # remove blocks within 1 pixel from the border
@@ -688,91 +730,99 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     pos_ref = pos_ref[valid_mask]
     
     # pos_ref_up = pos_ref.copy()
-    pos_mov_up = pos_mov_init[valid_mask]
+    pos_mov_ups = pos_mov_init[valid_mask]
 
     # Start matching
     ups_factor = 2 ** num_iter
     # img_ups_ref = upsample_image(img_ref, ups_factor)
-    img_ups_mov = upsample_image(img_mov, ups_factor)
 
-    # print(f"img_ups_mov\n", img_ups_mov)
+    img_blur_ref = img_ref
+    img_blur_mov = img_mov
+
+    # img_blur_ref = img_blur(img_ref)
+    # img_blur_mov = img_blur(img_mov)
+
+    img_mov_ups = upsample_image(img_blur_mov, ups_factor)
+
+    # print(f"img_mov_ups\n", img_mov_ups)
     
     # pos_ref_up = pos_ref_up * ups_factor
-    pos_mov_up = pos_mov_up * ups_factor
+    pos_mov_ups = pos_mov_ups * ups_factor
 
     sz_patch_up = sz_patch * ups_factor
-    w_up = w * ups_factor
-    th_up = th * ups_factor
+    w_ups = w * ups_factor
+    th_ups = th * ups_factor
 
-    # C function requires c-contiguous array
-    # if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
-    #     img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
-    if (not img_ref.flags["C_CONTIGUOUS"]) or (img_ref.dtype != np.float32):
-        img_ref = np.ascontiguousarray(img_ref, dtype=np.float32)
-    if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
-        img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
+    
+    if (not img_blur_ref.flags["C_CONTIGUOUS"]) or (img_blur_ref.dtype != np.float32):
+        img_blur_ref = np.ascontiguousarray(img_blur_ref, dtype=np.float32)
+    if (not img_mov_ups.flags["C_CONTIGUOUS"]) or (img_mov_ups.dtype != np.float32):
+        img_mov_ups = np.ascontiguousarray(img_mov_ups, dtype=np.float32)
     if (not pos_ref.flags["C_CONTIGUOUS"]) or (pos_ref.dtype != np.uint16):
         pos_ref = np.ascontiguousarray(pos_ref, dtype=np.uint16)
-    if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
-        pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
+    if (not pos_mov_ups.flags["C_CONTIGUOUS"]) or (pos_mov_ups.dtype != np.uint16):
+        pos_mov_ups = np.ascontiguousarray(pos_mov_ups, dtype=np.uint16)
 
-    # from datetime import datetime
-    # print(f"find_best_matching_func begins at {datetime.now()}")
-    pos_mov_up = find_best_matching_func(img_ref, img_ups_mov, pos_ref, pos_mov_up, w, th, ups_factor)
+    pos_mov_ups = find_best_matching_func(img_blur_ref, img_mov_ups, pos_ref, pos_mov_ups, w, th, ups_factor)
     
-    # print(f"find_best_matching_func ends at {datetime.now()}")
-
-
-
 
     # for iter in range(num_iter):
     #     # 1. upsampling
     #     ups_factor = 2 ** (iter+1)
     #     img_ups_ref = upsample_image(img_ref, ups_factor)
-    #     img_ups_mov = upsample_image(img_mov, ups_factor)
+    #     img_mov_ups = upsample_image(img_mov, ups_factor)
 
-    #     # print(f"img_ups_mov\n", img_ups_mov)
+    #     # print(f"img_mov_ups\n", img_mov_ups)
         
     #     pos_ref_up = 2 * pos_ref_up
-    #     pos_mov_up = 2 * pos_mov_up
+    #     pos_mov_ups = 2 * pos_mov_ups
 
     #     sz_patch_iter = 2 * sz_patch_iter
-    #     w_up = 2 * w_up
-    #     th_up = 2 * th_up
+    #     w_ups = 2 * w_ups
+    #     th_ups = 2 * th_ups
 
     #     # C function requires c-contiguous array
     #     if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
     #         img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
-    #     if (not img_ups_mov.flags["C_CONTIGUOUS"]) or (img_ups_mov.dtype != np.float32):
-    #         img_ups_mov = np.ascontiguousarray(img_ups_mov, dtype=np.float32)
+    #     if (not img_mov_ups.flags["C_CONTIGUOUS"]) or (img_mov_ups.dtype != np.float32):
+    #         img_mov_ups = np.ascontiguousarray(img_mov_ups, dtype=np.float32)
     #     if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
     #         pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
-    #     if (not pos_mov_up.flags["C_CONTIGUOUS"]) or (pos_mov_up.dtype != np.uint16):
-    #         pos_mov_up = np.ascontiguousarray(pos_mov_up, dtype=np.uint16)
+    #     if (not pos_mov_ups.flags["C_CONTIGUOUS"]) or (pos_mov_ups.dtype != np.uint16):
+    #         pos_mov_ups = np.ascontiguousarray(pos_mov_ups, dtype=np.uint16)
 
     #     print(f"find_best_matching_func begins at {datetime.now()}")
-    #     pos_mov_up = find_best_matching_func(img_ups_ref, img_ups_mov, pos_ref_up, pos_mov_up, w_up, th_up, ups_factor)
+    #     pos_mov_ups = find_best_matching_func(img_ups_ref, img_mov_ups, pos_ref_up, pos_mov_ups, w_ups, th_ups, ups_factor)
         
     #     print(f"find_best_matching_func ends at {datetime.now()}")
 
     # sz_patch_up = sz_patch * ups_factor
 
-    img_split_mov = view_as_windows(img_ups_mov, (w_up, w_up), step=(1, 1)) #.reshape(-1, w_up, w_up)
-    blocks_mov = img_split_mov[pos_mov_up[:, 0], pos_mov_up[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
+    img_mov_ups = upsample_image(img_mov, ups_factor)
+    img_split_mov = view_as_windows(img_mov_ups, (w_ups, w_ups), step=(1, 1)) #.reshape(-1, w_ups, w_ups)
+    blocks_mov = img_split_mov[pos_mov_ups[:, 0], pos_mov_ups[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
     blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
     blocks_mov = blocks_mov[:,:,:,0,0,0]
-
-
 
     # faster version
     img_split_ref = view_as_windows(img_ref, (w, w), step=(1, 1))
     blocks_ref = img_split_ref[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
 
-
     # DEBUG use
     # return pos_ref, pos_mov_final, blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
 
-    return blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
+    rings_ref = None
+    rings_mov = None
+
+    outer_blocks_ref = blocks_from_image(img_ref, w + 2 * th, pos_ref - th)
+    outer_blocks_mov = blocks_from_image(img_mov_ups, w_ups + 2 * th_ups, pos_mov_ups - th_ups)
+    outer_blocks_mov = outer_blocks_mov[:, ::ups_factor, ::ups_factor]
+
+    # print(f"outer_blocks_ref: {outer_blocks_ref.shape}")
+    # print(f"outer_blocks_mov: {outer_blocks_mov.shape}")
+
+    # return blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
+    return outer_blocks_ref.astype(np.float32), outer_blocks_mov.astype(np.float32)
 
 
 @cython.boundscheck(False)
