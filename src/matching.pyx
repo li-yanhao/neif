@@ -97,6 +97,25 @@ def img_direction(img, k):
     return img_dir
 
 
+# def img_blur(img):
+#     """ Gaussian blur with typical 3x3 kernel
+
+#     Parameters
+#     ----------
+#     img: np.ndarray
+#         One channel input image
+    
+#     Return
+#     ------
+#     img_blur: np.ndarray
+#         Blurred image in float
+#     """
+#     knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
+#     img_blur = convolve2d(img, knl, mode="same", boundary="symm")
+#     return img_blur
+
+
+
 def img_blur(img):
     """ Gaussian blur with typical 3x3 kernel
 
@@ -111,32 +130,9 @@ def img_blur(img):
         Blurred image in float
     """
 
-    knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
-
-    img_blur = convolve2d(img, knl, mode="same", boundary="symm")
-
-    return img_blur
-
-
-
-def img_blur(img):
-    """ Gaussian blur with typical 3x3 kernel
-
-    Parameters
-    ----------
-    img: np.ndarray
-        One channel input image
-    
-    Return
-    ------
-    img_blur: np.ndarray
-        Blurred image in float
-    """
-
-    # knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
-    # img_blur = convolve2d(img, knl, mode="same", boundary="symm")
     img_blur = gaussian_filter(img, sigma=1, mode="nearest")
     return img_blur
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

@@ -60,6 +60,9 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
 
     assert img_ref.shape == img_mov.shape
 
+    img_ref = img_ref.astype(np.float64)
+    img_mov = img_mov.astype(np.float64)
+
     C, H, W = img_ref.shape
 
     intensities = np.zeros((C, bins))
