@@ -84,7 +84,7 @@ out_curve=${@:$OPTIND+2:1}
 #####################
 #      IPOL env     #
 #####################
-main=$bin/neif/main.py
+main=$bin/main.py
 
 #####################
 #   Main execution  #
