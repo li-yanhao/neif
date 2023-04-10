@@ -3,22 +3,22 @@
 set -eu
 
 bins=16
-w=7
-T=8
+w=8
+T=9
 th=3
 search_range=5
-quantile=5
-demosaic=""
-multiscale=2
-prec_lvl=0
+quantile=0.01
+multiscale=-1
+subpx_order=0
 # add_noise="-add_noise"
 add_noise=""
 noise_a="0.2"
 noise_b="0.2"
+grayscale=""
 
 
 
-while getopts :b:w:T:t:s:q:d:m:N:A:B: option
+while getopts :b:w:T:t:s:q:g:m:S:N:A:B: option
 do 
     case "${option}" in
         b) bins=${OPTARG};;
@@ -27,18 +27,19 @@ do
         t) th=${OPTARG};;
         s) search_range=${OPTARG};;
         q) quantile=${OPTARG};;
-        d)  if [ ${OPTARG} = "True" ]
+        g)  if [ ${OPTARG} = "True" ]
             then
-                demosaic="-demosaic"
+                grayscale="-grayscale"
             elif [ ${OPTARG} = "False" ]
             then
-                demosaic=""
+                grayscale=""
             else
-                echo "Error: demosaic option should be True or False"
+                echo "Error: grayscale option should be True or False"
                 exit 1
             fi
             ;;
         m)  multiscale=${OPTARG};;
+        S)  subpx_order=${OPTARG};;
         N)  if [ ${OPTARG} = "True" ]
             then
                 add_noise="-add_noise"
@@ -98,8 +99,9 @@ command="python $main $img_0 $img_1 \
     -noise_a $noise_a \
     -noise_b $noise_b \
     -multiscale $multiscale \
+    -subpx_order $subpx_order \
     $add_noise \
-    $demosaic"
+    $grayscale"
 
 # echo $command
 $command

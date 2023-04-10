@@ -24,96 +24,31 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
-import cv2
 from skimage.util import view_as_windows, view_as_blocks
-
-from scipy.fft import dct, dctn, fft2, ifft2
-from scipy.signal import convolve2d
-from scipy import interpolate
-from scipy.ndimage import gaussian_filter
+from scipy.fft import dctn, fft2, ifft2
+# import cv2
+# from scipy.signal import convolve2d
+# from scipy import interpolate
+from scipy.ndimage import gaussian_filter, maximum_filter
+from scipy.fft import dctn
 
 import os
 
-from cython.parallel cimport prange
-
-# For debug use
-# from inspect import currentframe
-
 ########################################
 
-# ctypedef fused T_t:
-#     np.int32_t
-#     float
-
-# ctypedef fused Tu_t:
-#     np.int64_t
-#     double
-
-ctypedef double T_t
-T = np.float64
-
-# ctypedef np.int32_t T_t
-# T = np.int32
+ctypedef float T_t
+T = np.float32
 
 cdef extern from "limits.h":
-    cdef int INT32_MAX
-    cdef unsigned int UINT32_MAX
+    # cdef int INT32_MAX
+    # cdef unsigned int UINT32_MAX
     cdef long INT64_MAX
-    cdef unsigned long UINT64_MAX
+    # cdef unsigned long UINT64_MAX
 
-cdef extern from "float.h":
-    cdef double DBL_MAX
+# cdef extern from "float.h":
+    # cdef double DBL_MAX
 
 ########################################
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def img_direction(img, k):
-    """ Divide 360 degrees into k ranges, compute the gradient directions of each pixel and 
-        map with the directions with an integer in [0, k-1].
-
-    Parameters
-    ----------
-    img: np.ndarray
-        One channel input image
-    
-    Return
-    ----------
-    img_dir: np.ndarray
-        Image of uint8 values in [0, k-1]. Each int value indicates a gradient direction.
-
-    """
-
-    img_dx = cv2.Sobel(img.astype(np.uint16), cv2.CV_32F, 1, 0, 3)
-    img_dy = cv2.Sobel(img.astype(np.uint16), cv2.CV_32F, 0, 1, 3)
-    img_angle = np.arctan2(img_dy, img_dx) # [-pi, pi)
-    # img_dir = np.floor(img_angle / 2 / np.pi * k)
-    # img_dir[img_dir < 0] += k
-
-    img_dir = np.round(img_angle / 2 / np.pi * k)
-
-    img_dir = img_dir.astype(np.int8) % k
-
-    return img_dir
-
-
-# def img_blur(img):
-#     """ Gaussian blur with typical 3x3 kernel
-
-#     Parameters
-#     ----------
-#     img: np.ndarray
-#         One channel input image
-    
-#     Return
-#     ------
-#     img_blur: np.ndarray
-#         Blurred image in float
-#     """
-#     knl = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], dtype=np.float64)
-#     img_blur = convolve2d(img, knl, mode="same", boundary="symm")
-#     return img_blur
-
 
 
 def img_blur(img):
@@ -132,87 +67,6 @@ def img_blur(img):
 
     img_blur = gaussian_filter(img, sigma=1, mode="nearest")
     return img_blur
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def integral_image(T_t[:, :] img, int H, int W):
-    """ Compute integral image
-
-    Parametes
-    ---------
-    img: np.ndarray
-        input image, of size (H, W)
-    H: int
-        Height
-    W: int
-        Width
-
-    Return
-    ------
-    img_int: np.ndarray
-        output integral image, of size (H, W)
-
-    """
-    # if T_t is int:
-    #     T = np.int64
-    # else:
-    T = np.float64
-
-    cdef np.ndarray img_int = np.zeros((H, W), dtype=T)
-    img_int[0] = np.cumsum(img[0])
-
-    cdef T_t s
-    cdef int i, j
-
-    cdef T_t[:, :] img_view = img
-    cdef T_t[:, :] img_int_view = img_int
-
-
-    for i in range(1, H):
-        s = img_view[i, 0]
-        img_int_view[i, 0] = img_int_view[i-1, 0] + s
-        for j in range(1, W):
-            s = s + img_view[i, j]
-            img_int_view[i, j] = img_int_view[i-1, j] + s
-
-    return img_int
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline np.uint32_t compute_cost(np.uint32_t[:, :] img_int, int pi, int pj, int w):
-    """ Compute the sum of costs in a block using integral image
-
-    Parameters
-    ----------
-    img_int: np.ndarray
-        Integral image
-    pi: int
-        Row of the top-left pixel of the block, of size (2, )
-    pj: int
-        Column of the top-left pixel of the block, of size (2, )
-    w: int
-        Block size
-    
-    Return
-    ------
-    cost: int
-        Sum of pixel values in the block
-
-    """
-    
-    cdef np.uint32_t cost
-    if pi > 0 and pj > 0:
-        cost = img_int[pi + w - 1, pj + w - 1] + img_int[pi - 1, pj - 1] - img_int[pi - 1, pj + w -1] - img_int[pi + w - 1, pj - 1]
-    elif pi > 0 and pj == 0:
-        cost = img_int[pi + w - 1, pj + w - 1] - img_int[pi - 1, pj + w - 1]
-    elif pi == 0 and pj > 0:
-        cost = img_int[pi + w - 1, pj + w - 1] - img_int[pi + w - 1, pj - 1]
-    else:
-        cost = img_int[pi + w - 1, pj + w - 1]
-
-    return cost
 
 
 @cython.boundscheck(False)
@@ -240,7 +94,7 @@ def convolve2d_sum(np.ndarray img, int h, int w):
     sum_of_blocks = np.cumsum(img, axis=1, dtype=np.float64)
 
     sum_of_blocks[:, w:] = sum_of_blocks[:, w:] - sum_of_blocks[:, :-w]
-    sum_of_blocks = sum_of_blocks[:, w-1 : ]
+    sum_of_blocks = sum_of_blocks[:, w-1:]
 
     sum_of_blocks = np.cumsum(sum_of_blocks, axis=0, dtype=np.float64)
     sum_of_blocks[h:, :] = sum_of_blocks[h:, :] - sum_of_blocks[:-h, :]
@@ -249,17 +103,6 @@ def convolve2d_sum(np.ndarray img, int h, int w):
     return sum_of_blocks
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline int dist(np.int8_t x, np.int8_t y, int k):
-    cdef int d0, d1
-    if x > y: d0 = x - y
-    else: d0 = y - x
-    d1 = k - d0
-    return d0 if d0 < d1 else d1
-
-
-# @cython.nonecheck(False)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, int w, int th, int s):
@@ -296,35 +139,18 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray img_blur_ref = img_blur(img_ref)
     cdef np.ndarray img_blur_mov = img_blur(img_mov)
 
-
-    # cdef np.ndarray offsets = np.zeros((2*s+1, 2*s+1), dtype=np.int64)
-
-
-    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.float64)
+    cdef np.ndarray img_diff_offsets = np.zeros((2*s+1, 2*s+1, H-2*s, W-2*s), dtype=np.float32)
     
-    cdef double[:, :, :, :] img_diff_offsets_view = img_diff_offsets
-    cdef double[:, :] img_blur_ref_view = img_blur_ref
-    cdef double[:, :] img_blur_mov_view = img_blur_mov
-    
-
-    img_blur_ref_cropped = img_blur_ref[s:(H-s), s:(W-s)]
+    cdef float[:, :, :, :] img_diff_offsets_view = img_diff_offsets
+    cdef float[:, :] img_blur_ref_view = img_blur_ref
+    cdef float[:, :] img_blur_mov_view = img_blur_mov
 
     cdef int off_i, off_j, i, j
 
-    # TODO: parallelism
-    # with nogil:
-    #     for off_i in prange(0, 2*s+1, num_threads=8):
     for off_i in range(0, 2*s+1):
         for off_j in range(0, 2*s+1):
-            # img_blur_mov_cropped = img_blur_mov[off_i:(H-2*s+off_i), off_j:(W-2*s+off_j)]
-            # img_diff_offsets[off_i, off_j] = img_blur_ref_cropped - img_blur_mov_cropped
-            # img_diff_offsets[off_i, off_j] = img_diff_offsets[off_i, off_j] * img_diff_offsets[off_i, off_j]
-
-
-            # img_diff_view = img_diff_offsets_view[off_i, off_j]
             for i in range(0, H-2*s):
                 for j in range(0, W-2*s):
-                    # TODO: update SSD metric in the paper
                     img_diff_offsets_view[off_i, off_j, i, j] = img_blur_ref_view[i+s, j+s] - img_blur_mov_view[i+off_i, j+off_j]
                     img_diff_offsets_view[off_i, off_j, i, j] = img_diff_offsets_view[off_i, off_j, i, j] * img_diff_offsets_view[off_i, off_j, i, j]
 
@@ -333,7 +159,6 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef np.ndarray pos_mov = np.zeros(( (H-2*s-outer_sz+1) * (W-2*s-outer_sz+1), 2), dtype=np.int32)
     
     cdef np.ndarray cost_of_offsets = np.zeros((2*s+1, 2*s+1, H-2*s-outer_sz+1, W-2*s-outer_sz+1), dtype=np.float64)
-    # cdef np.ndarray sum_of_outer_blks, sum_of_inner_blks
     
     for off_i in range(2*s+1):
         for off_j in range(2*s+1):
@@ -355,12 +180,8 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
     cdef int H_img_blk = H-2*s-outer_sz+1
     cdef int W_img_blk = W-2*s-outer_sz+1
 
-    # TODO: parallelism
-    # openmp.omp_set_dynamic(8)
-    
     for i in range(H_img_blk):
         for j in range(W_img_blk):
-            # cost_best = INT32_MAX 
             cost_best = INT64_MAX
             off_i_best = 0
             off_j_best = 0
@@ -375,9 +196,6 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
             pos_ref_view[nb_pos, 1] = j + s + th
             pos_mov_view[nb_pos, 0] = pos_ref_view[nb_pos, 0] + (off_i_best - s)
             pos_mov_view[nb_pos, 1] = pos_ref_view[nb_pos, 1] + (off_j_best - s)
-
-            # nb_pos = nb_pos + 1
-
 
     return pos_ref, pos_mov
 
@@ -453,8 +271,6 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     
     dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
     dct_blks_diff = dct_blks_diff.astype(np.float32)
-    # dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    # dct_blks_diff = (dct_blks_ref - dct_blks_mov).astype(np.float32)
 
     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
     cdef np.float32_t[:, :] dct_blk_view
@@ -497,15 +313,12 @@ def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
         Selected blocks in moving image, of size (M, w, w)
     """
 
-    # assert blks_ref.shape == blks_mov.shape
     cdef int N = blks_mov.shape[0]
     cdef int w = blks_mov.shape[1]
 
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
     cdef np.float32_t[:] E_view = E
     
-    # dct_blks_ref = dctn(blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-    # dct_blks_mov = dctn(blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
     dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
@@ -526,7 +339,7 @@ def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
+def partition_obsolete(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
               np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int b):
     """ Partition the block pairs into bins according to their mean intensities
         (See Algo. 3 of Sec. 5 in the paper)
@@ -569,6 +382,53 @@ def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, 
     return bins_pos_ref, bins_pos_mov
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
+              np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int b):
+    """ Partition the block pairs into bins according to their mean intensities
+        (See Algo. 3 of Sec. 5 in the paper)
+
+    Parameters
+    ----------
+    img_ref: np.ndarray
+        Reference image of size (H, W)
+    img_mov: np.ndarray
+        Moving image of size (H, W)
+    pos_ref: np.ndarray
+        Block positions in reference image, of size (N, 2)
+    pos_mov: np.ndarray
+        Block positions in moving image, of size (N, 2)
+    w: int
+        Block size
+    b : int
+        number of bins
+
+    Returns
+    -------
+    bins_pos_ref: np.ndarray
+        Bins of block positions in reference image, of size (b, M, 2), with M
+        the number of blocks per bin
+    bins_pos_mov: np.ndarray
+        Bins of block positions in moving image, of size (b, M, 2)
+    """
+    sum_conv_ref = convolve2d_sum(img_ref, w, w) 
+    sum_conv_mov = convolve2d_sum(img_mov, w, w)
+
+    mean_blks_ref = sum_conv_ref[pos_ref[:,0], pos_ref[:, 1]] / w**2
+    mean_blks_mov = sum_conv_mov[pos_mov[:,0], pos_mov[:, 1]] / w**2
+
+    L = (mean_blks_ref + mean_blks_mov) / 2 # (N, )
+
+    I = np.argsort(L)
+    I_in_bins = I[:len(L) // b * b].reshape(b, -1)
+
+    bins_pos_ref = pos_ref[I_in_bins]
+    bins_pos_mov = pos_mov[I_in_bins]
+
+    return bins_pos_ref, bins_pos_mov
+
+
 # Interaction between numpy and native c
 # https://scipy-lectures.org/advanced/interfacing_with_c/interfacing_with_c.html
 
@@ -599,7 +459,7 @@ def find_best_matching_func(
     cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_mov = np.zeros((N, 2), dtype=np.uint16)
 
     # find_best_matching / find_best_matching_one_shot
-    find_best_matching_one_shot(<float*> np.PyArray_DATA(img_ref),
+    find_best_matching(<float*> np.PyArray_DATA(img_ref),
                        <float*> np.PyArray_DATA(img_mov),
                        <np.uint16_t*> np.PyArray_DATA(pos_ref),
                        <np.uint16_t*> np.PyArray_DATA(pos_mov_init),
@@ -643,10 +503,8 @@ def upsample_image(img_in, ups_factor):
     
     fft_ups = np.fft.ifftshift(fr + fi * 1j)
 
-    # img_ups = np.fft.ifft2(fft_ups, norm="forward").real
     img_ups = ifft2(fft_ups, norm="forward", workers=os.cpu_count()).real
 
-    # img_ups = np.clip(img_ups, 0, 1) * 255
     img_ups = img_ups * 255.0
     img_ups = img_ups.astype(np.float32)
 
@@ -678,7 +536,7 @@ def blocks_from_image(img, blk_sz, pos):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
+def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w: int, th: int, order:int=2):
     """ Compute the blocks in the moving image that match the blocks in the reference image
         by matching their surrounding rings in subpixelic precision
 
@@ -697,6 +555,8 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     th: int
         Thickness of surrounding ring
         at each iteration (e.g. 1/2px -> 1/4px -> 1/8px etc.)
+    order: int
+        The scale of upsampling the moving image.
 
     Returns
     -------
@@ -712,113 +572,47 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w, th, num_iter=2):
     assert pos_ref.shape == pos_mov_init.shape
     N, _ = pos_ref.shape
 
-    sz_patch = w + 2 * th
-
-    # sz_patch_iter = sz_patch
     w_ups = w
-    th_ups = th
 
     # TODO: add to IPOL paper
-    # remove blocks within 1 pixel from the border
-    cdef int margin = 2
+    # remove blocks within 4 pixels from the border
+    cdef int margin = 4
     valid_mask = (pos_mov_init[:, 0] >= th + margin) & (pos_mov_init[:, 0] < H - w + 1 - th - margin) & \
                      (pos_mov_init[:, 1] >= th + margin) & (pos_mov_init[:, 1] < W - w + 1 - th - margin)
     pos_ref = pos_ref[valid_mask]
     
-    # pos_ref_up = pos_ref.copy()
     pos_mov_ups = pos_mov_init[valid_mask]
 
     # Start matching
-    ups_factor = 2 ** num_iter
-    # img_ups_ref = upsample_image(img_ref, ups_factor)
+    ups_factor = 2 ** order
 
-    img_blur_ref = img_ref
-    img_blur_mov = img_mov
+    img_blur_ref = img_blur(img_ref)
+    img_blur_mov = img_blur(img_mov)
 
-    # img_blur_ref = img_blur(img_ref)
-    # img_blur_mov = img_blur(img_mov)
-
-    img_mov_ups = upsample_image(img_blur_mov, ups_factor)
-
-    # print(f"img_mov_ups\n", img_mov_ups)
-    
-    # pos_ref_up = pos_ref_up * ups_factor
+    img_blur_mov_ups = upsample_image(img_blur_mov, ups_factor)
     pos_mov_ups = pos_mov_ups * ups_factor
 
-    sz_patch_up = sz_patch * ups_factor
     w_ups = w * ups_factor
-    th_ups = th * ups_factor
 
     
     if (not img_blur_ref.flags["C_CONTIGUOUS"]) or (img_blur_ref.dtype != np.float32):
         img_blur_ref = np.ascontiguousarray(img_blur_ref, dtype=np.float32)
-    if (not img_mov_ups.flags["C_CONTIGUOUS"]) or (img_mov_ups.dtype != np.float32):
-        img_mov_ups = np.ascontiguousarray(img_mov_ups, dtype=np.float32)
+    if (not img_blur_mov_ups.flags["C_CONTIGUOUS"]) or (img_blur_mov_ups.dtype != np.float32):
+        img_blur_mov_ups = np.ascontiguousarray(img_blur_mov_ups, dtype=np.float32)
     if (not pos_ref.flags["C_CONTIGUOUS"]) or (pos_ref.dtype != np.uint16):
         pos_ref = np.ascontiguousarray(pos_ref, dtype=np.uint16)
     if (not pos_mov_ups.flags["C_CONTIGUOUS"]) or (pos_mov_ups.dtype != np.uint16):
         pos_mov_ups = np.ascontiguousarray(pos_mov_ups, dtype=np.uint16)
 
-    pos_mov_ups = find_best_matching_func(img_blur_ref, img_mov_ups, pos_ref, pos_mov_ups, w, th, ups_factor)
+    pos_mov_ups = find_best_matching_func(img_blur_ref, img_blur_mov_ups, pos_ref, pos_mov_ups, w, th, ups_factor)
     
-
-    # for iter in range(num_iter):
-    #     # 1. upsampling
-    #     ups_factor = 2 ** (iter+1)
-    #     img_ups_ref = upsample_image(img_ref, ups_factor)
-    #     img_mov_ups = upsample_image(img_mov, ups_factor)
-
-    #     # print(f"img_mov_ups\n", img_mov_ups)
-        
-    #     pos_ref_up = 2 * pos_ref_up
-    #     pos_mov_ups = 2 * pos_mov_ups
-
-    #     sz_patch_iter = 2 * sz_patch_iter
-    #     w_ups = 2 * w_ups
-    #     th_ups = 2 * th_ups
-
-    #     # C function requires c-contiguous array
-    #     if (not img_ups_ref.flags["C_CONTIGUOUS"]) or (img_ups_ref.dtype != np.float32):
-    #         img_ups_ref = np.ascontiguousarray(img_ups_ref, dtype=np.float32)
-    #     if (not img_mov_ups.flags["C_CONTIGUOUS"]) or (img_mov_ups.dtype != np.float32):
-    #         img_mov_ups = np.ascontiguousarray(img_mov_ups, dtype=np.float32)
-    #     if (not pos_ref_up.flags["C_CONTIGUOUS"]) or (pos_ref_up.dtype != np.uint16):
-    #         pos_ref_up = np.ascontiguousarray(pos_ref_up, dtype=np.uint16)
-    #     if (not pos_mov_ups.flags["C_CONTIGUOUS"]) or (pos_mov_ups.dtype != np.uint16):
-    #         pos_mov_ups = np.ascontiguousarray(pos_mov_ups, dtype=np.uint16)
-
-    #     print(f"find_best_matching_func begins at {datetime.now()}")
-    #     pos_mov_ups = find_best_matching_func(img_ups_ref, img_mov_ups, pos_ref_up, pos_mov_ups, w_ups, th_ups, ups_factor)
-        
-    #     print(f"find_best_matching_func ends at {datetime.now()}")
-
-    # sz_patch_up = sz_patch * ups_factor
-
     img_mov_ups = upsample_image(img_mov, ups_factor)
-    img_split_mov = view_as_windows(img_mov_ups, (w_ups, w_ups), step=(1, 1)) #.reshape(-1, w_ups, w_ups)
-    blocks_mov = img_split_mov[pos_mov_ups[:, 0], pos_mov_ups[:, 1]] # (N, w * 2**num_iter, w * 2**num_iter,)
-    blocks_mov = view_as_blocks(blocks_mov, (1, 2**(num_iter), 2**(num_iter))) # (N, w, w, 1, 2**num_iter, 2**num_iter)
-    blocks_mov = blocks_mov[:,:,:,0,0,0]
+    
+    inner_blocks_ref = blocks_from_image(img_ref, w, pos_ref)
+    inner_blocks_mov = blocks_from_image(img_mov_ups, w_ups, pos_mov_ups)
+    inner_blocks_mov = inner_blocks_mov[:, ::ups_factor, ::ups_factor]
 
-    # faster version
-    img_split_ref = view_as_windows(img_ref, (w, w), step=(1, 1))
-    blocks_ref = img_split_ref[pos_ref[:, 0], pos_ref[:, 1]] # (N, w, w)
-
-    # DEBUG use
-    # return pos_ref, pos_mov_final, blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
-
-    rings_ref = None
-    rings_mov = None
-
-    outer_blocks_ref = blocks_from_image(img_ref, w + 2 * th, pos_ref - th)
-    outer_blocks_mov = blocks_from_image(img_mov_ups, w_ups + 2 * th_ups, pos_mov_ups - th_ups)
-    outer_blocks_mov = outer_blocks_mov[:, ::ups_factor, ::ups_factor]
-
-    # print(f"outer_blocks_ref: {outer_blocks_ref.shape}")
-    # print(f"outer_blocks_mov: {outer_blocks_mov.shape}")
-
-    # return blocks_ref.astype(np.float32), blocks_mov.astype(np.float32)
-    return outer_blocks_ref.astype(np.float32), outer_blocks_mov.astype(np.float32)
+    return inner_blocks_ref.astype(np.float32), inner_blocks_mov.astype(np.float32)
 
 
 @cython.boundscheck(False)
@@ -836,7 +630,7 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
     factor: int
-        Subscaling factor
+        Downscaling factor.
 
     Returns
     -------
@@ -857,17 +651,11 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
         assert W % factor == 0, "The block size must be multiple of the subsample factor"
         w = W // factor
 
-        blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        blks_diff.transpose((0, 3, 4, 1, 2))
-        blks_diff = blks_diff.reshape(-1, w, w)
+        # blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
+        # blks_diff.transpose((0, 3, 4, 1, 2))
+        # blks_diff = blks_diff.reshape(-1, w, w)
 
-        # blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_ref.transpose((0, 3, 4, 1, 2))
-        # blks_ref = blks_ref.reshape(-1, w, w)
-
-        # blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_mov.transpose((0, 3, 4, 1, 2))
-        # blks_mov = blks_mov.reshape(-1, w, w)
+        blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze().mean(axis=(-1, -2)) # (N, w, w, factor, factor)
     
     dct_blks_diff = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
@@ -883,7 +671,7 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
+def remove_saturated_obsolete(np.ndarray img_ref, np.ndarray img_mov,
                      np.ndarray pos_ref, np.ndarray pos_mov, int w):
     """ Remove saturated block pairs and return non-saturated pairs
     
@@ -920,14 +708,77 @@ def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
     return pos_ref[valid_mask], pos_mov[valid_mask]
 
 
-from scipy.fft import dctn
-from skimage.util.shape import view_as_blocks
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
+                     np.ndarray pos_ref, np.ndarray pos_mov, int w):
+    """ Remove saturated block pairs and return non-saturated pairs
+    
+    Parameters
+    ----------
+    img_ref: np.ndarray
+        Reference image
+    img_mov: np.ndarray
+        Moving image
+    pos_ref: np.ndarray
+        Block positions in reference image, of size (N, 2)
+    pos_mov: np.ndarray
+        Block positions in moving image, of size (N, 2)
+    w: int
+        Block size
+
+    Return
+    ------
+    [0]: np.ndarray
+        Positions of non-saturated blocks in reference frame
+    [1]: np.ndarray
+        Positions of non-saturated blocks in moving frame
+    """
+
+    H, W = img_ref.shape[0], img_ref.shape[1]
+    max_val = np.max([np.max(img_ref), np.max(img_mov)])
+
+    max_conv_ref = maximum_filter(img_ref, w) # (H, W)
+    max_conv_ref = max_conv_ref[w//2: w//2+H-w+1, w//2: w//2+W-w+1]
+
+    max_conv_mov = maximum_filter(img_ref, w) # (H, W)
+    max_conv_mov = max_conv_mov[w//2: w//2+H-w+1, w//2: w//2+W-w+1]
+
+    # valid_img_ref = max_conv_ref != max_val
+    # valid_img_mov = max_conv_mov != max_val
+
+    valid_mask_ref = max_conv_ref[pos_ref[:,0], pos_ref[:,1]] != max_val
+    valid_mask_mov = max_conv_mov[pos_mov[:,0], pos_mov[:,1]] != max_val
+    valid_mask = valid_mask_ref & valid_mask_mov
+
+    return pos_ref[valid_mask], pos_mov[valid_mask]
+
+
+    # valid_mask_ref = (img_ref < max_val)
+    # cdef bool[:] valid_mask_ref_view = valid_mask_ref
+    # cdef int i, j
+    # for i in range(H):
+    #     for j in range(W):
+    #         if 
+
+
+    # blks_ref = view_as_windows(img_ref, (w,w), step=(1,1))[pos_ref[:, 0], pos_ref[:, 1]]
+    # blks_mov = view_as_windows(img_mov, (w,w), step=(1,1))[pos_mov[:, 0], pos_mov[:, 1]]
+
+    # max_val = np.max([np.max(img_ref), np.max(img_mov)])
+
+    # valid_mask_ref = np.max(blks_ref, axis=(1, 2)) != max_val
+    # valid_mask_mov = np.max(blks_mov, axis=(1, 2)) != max_val
+    # valid_mask = valid_mask_ref & valid_mask_mov
+
+    # return pos_ref[valid_mask], pos_mov[valid_mask]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def estimate_intensity_and_variance(blks_ref, blks_mov,
-                                    T: int, factor:int):
+                                    T: int, q: float):
     """ Select block pairs of a bin and compute an intensity and a noise variance
 
     Parameters
@@ -938,6 +789,8 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         blocks in moving frame, in shape (N, w, w)
     T: int
         frequency separator
+    q: float
+        quantile of selected block pairs
     fact: int
         Subscaling factor. 1 for non subscaling
 
@@ -947,49 +800,24 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         mean intensity of the selected block pairs
     variance: float
         noise variance from the selected inter-block differences
-    """    
-
-    # subscale the block differences
-    # (See Algo. 9 of Sec. 8 in the paper)
-    if factor > 1:
-        N, W, _ = blks_ref.shape
-
-        assert W % factor == 0, "The block size must be multiple of the subsample factor"
-        w = W // factor
-
-        blks_ref = view_as_blocks(blks_ref, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_ref = np.transpose(blks_ref, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
-        blks_ref.transpose((0, 3, 4, 1, 2))
-        blks_ref = blks_ref.reshape(-1, w, w)
-
-        # blks_ref = blks_ref.reshape(-1, w, w)
-
-        blks_mov = view_as_blocks(blks_mov, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_mov = np.transpose(blks_mov, (0, 3, 4, 1, 2)) # (N, factor, factor, w, w)
-        blks_mov.transpose((0, 3, 4, 1, 2))
-        blks_mov = blks_mov.reshape(-1, w, w)
+    """
 
     N, w, _ = blks_ref.shape
 
-    blks_diff = blks_mov - blks_ref
+    blks_diff = np.array(blks_mov - blks_ref)
     dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
     
     # Low-frequency energy
-    # cdef np.ndarray E = np.zeros(N, dtype=np.float32)
-    # cdef np.float32_t[:] E_view = E
+    cdef np.ndarray E = np.zeros(N, dtype=np.float32)
+    cdef np.float32_t[:] E_view = E
+    cdef np.float32_t[:, :, :] dct_blks_view = dct_blks
 
-    # cdef np.float32_t[:, :, :] dct_blks_view = dct_blks
-    # cdef np.float32_t[:, :] dct_blk_view
+    cdef int i
+    for i in range(N):
+        E_view[i] = compute_low_freq_energy(dct_blks_view[i], w, T)
 
-    # cdef int i
-    # for i in range(N):
-        # dct_blk_view = dct_blks_view[i]
-        # E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
-
-    # I = np.argsort(E)[:int(N * q)]
-
-    # dct_blks_good = dct_blks[I] # (n, w, w)
-
+    I = np.argsort(E)[:int(N * q)]
+    dct_blks = dct_blks[I] # (N*q, w, w)
     VH = []
     for i in range(w):
         for j in range(w):
@@ -997,7 +825,6 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
                 VH.append(np.mean(dct_blks[:, i, j] ** 2))
     
     variance = np.median( np.array(VH) ) / 2
-
     intensity = (blks_mov.mean() + blks_ref.mean()) / 2
 
     return intensity, variance
