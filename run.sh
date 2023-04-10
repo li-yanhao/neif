@@ -27,27 +27,27 @@ do
         t) th=${OPTARG};;
         s) search_range=${OPTARG};;
         q) quantile=${OPTARG};;
-        g)  if [ ${OPTARG} = "True" ]
+        g)  if [ ${OPTARG} = "true" ]
             then
                 grayscale="-grayscale"
-            elif [ ${OPTARG} = "False" ]
+            elif [ ${OPTARG} = "false" ]
             then
                 grayscale=""
             else
-                echo "Error: grayscale option should be True or False, get ${OPTARG}"
+                echo "Error: grayscale option should be `true` or `false`, get ${OPTARG}"
                 exit 1
             fi
             ;;
         m)  multiscale=${OPTARG};;
         S)  subpx_order=${OPTARG};;
-        N)  if [ ${OPTARG} = "True" ]
+        N)  if [ ${OPTARG} = "true" ]
             then
                 add_noise="-add_noise"
-            elif [ ${OPTARG} = "False" ]
+            elif [ ${OPTARG} = "false" ]
             then
                 add_noise=""
             else
-                echo "Error: add_noise option should be True or False"
+                echo "Error: add_noise option should be `true` or `false`"
                 exit 1
             fi
             ;;
