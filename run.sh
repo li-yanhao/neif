@@ -34,7 +34,7 @@ do
             then
                 grayscale=""
             else
-                echo "Error: grayscale option should be True or False"
+                echo "Error: grayscale option should be True or False, get ${OPTARG}"
                 exit 1
             fi
             ;;
