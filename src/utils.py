@@ -56,14 +56,16 @@ def read_img(fname: str, grayscale:bool=False):
         C = 3 for 
     """
 
-    demosaic = False
     if fname.endswith(".dng"):
         with rawpy.imread(fname) as raw:
             img = raw.raw_image.copy().astype(np.float32)
-        if not grayscale:
-            demosaic = True
     else:
         img = iio.imread(fname, plugin='pil').astype(np.float32)
+    
+    demosaic = False
+    if fname.endswith(".dng") or fname.endswith(".tif") or fname.endswith(".tiff"):
+        if not grayscale:
+            demosaic = True
 
     # if fname.endswith(".tif") or fname.endswith(".tiff") or fname.endswith(".tif") or fname.endswith(".tif"):
     #     img = cv2.imread(fname, -1).astype(np.float32)
