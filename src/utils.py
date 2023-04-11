@@ -59,6 +59,21 @@ def read_img(fname: str, grayscale:bool=False):
     if fname.endswith(".dng"):
         with rawpy.imread(fname) as raw:
             img = raw.raw_image.copy().astype(np.float32)
+    elif fname.endswith(".tif") or fname.endswith(".tiff"):
+        success = False
+        try:
+            with rawpy.imread(fname) as raw:
+                img = raw.raw_image.copy().astype(np.float32)
+            success = True
+        except:
+            pass
+        if not success:
+            try:
+                with rawpy.imread(fname) as raw:
+                    img = raw.raw_image.copy().astype(np.float32)
+                success = True
+            except:
+                pass
     else:
         img = iio.imread(fname, plugin='pil').astype(np.float32)
     
