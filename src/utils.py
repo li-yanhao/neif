@@ -201,7 +201,6 @@ def downscale(img: np.ndarray, antialias: bool=True) -> np.ndarray:
     return img_ds
 
 
-
 def downscale_lebrun(img: np.ndarray) -> np.ndarray:
     """ Downscale an image by factor 2. See multiscale blind denoising.
 

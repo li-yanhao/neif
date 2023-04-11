@@ -104,5 +104,7 @@ command="python $main $img_0 $img_1 \
     $grayscale"
 
 # echo $command
+ls
+
 $command
 
