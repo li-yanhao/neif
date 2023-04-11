@@ -755,25 +755,6 @@ def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
     return pos_ref[valid_mask], pos_mov[valid_mask]
 
 
-    # valid_mask_ref = (img_ref < max_val)
-    # cdef bool[:] valid_mask_ref_view = valid_mask_ref
-    # cdef int i, j
-    # for i in range(H):
-    #     for j in range(W):
-    #         if 
-
-
-    # blks_ref = view_as_windows(img_ref, (w,w), step=(1,1))[pos_ref[:, 0], pos_ref[:, 1]]
-    # blks_mov = view_as_windows(img_mov, (w,w), step=(1,1))[pos_mov[:, 0], pos_mov[:, 1]]
-
-    # max_val = np.max([np.max(img_ref), np.max(img_mov)])
-
-    # valid_mask_ref = np.max(blks_ref, axis=(1, 2)) != max_val
-    # valid_mask_mov = np.max(blks_mov, axis=(1, 2)) != max_val
-    # valid_mask = valid_mask_ref & valid_mask_mov
-
-    # return pos_ref[valid_mask], pos_mov[valid_mask]
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

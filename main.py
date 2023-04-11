@@ -7,8 +7,10 @@ import src.utils as utils
 import cv2
 import numpy as np
 import os
+import magic
 
 import argparse
+import subprocess
 
 
 parser = argparse.ArgumentParser(description='Noise Estimation')
@@ -63,115 +65,140 @@ def save_to_txt(intensities, variances, scale):
     np.savetxt(f"output_s{scale}.txt", out_data, fmt=f'%{len}.3f')
 
 
-def main_old():
+def get_extension(fname):
+    metadata = magic.from_file(fname, mime=True)
+    ext = metadata.split("/")[-1]
+    return ext
+
+
+def rename_file_by_ext(fname):
+    metadata = magic.from_file(fname, mime=True)
+    ext = metadata.split("/")[-1]
+    if not fname.endswith(ext):
+        new_fname = fname + "." + ext
+        command = f"mv {fname} {new_fname}"
+        std_msg = subprocess.run(command, shell=True, capture_output=True, text=True)
+        return new_fname
+    else:
+        return fname
+
+# def main_old():
+#     print("Parameters:")
+#     print(args)
+#     print()
+
+#     img_0 = utils.read_img(args.im_0, grayscale=args.grayscale)
+#     img_1 = utils.read_img(args.im_1, grayscale=args.grayscale)
+
+#     if args.add_noise == True:
+#         img_0_noisy = utils.add_noise(img_0, args.noise_a, args.noise_b)
+#         img_1_noisy = utils.add_noise(img_1, args.noise_a, args.noise_b)
+
+#         noise_0 = img_0_noisy - img_0
+#         noise_1 = img_1_noisy - img_1
+
+#         # scale noise for visualization
+#         max_val = np.max((np.max(noise_0), np.max(noise_1)))
+#         noise_0 = np.uint8(np.abs(noise_0) / max_val * 255)
+#         noise_1 = np.uint8(np.abs(noise_1) / max_val * 255)
+#         print(noise_0.shape)
+#         noise_0 = np.transpose(noise_0, (1, 2, 0))
+#         noise_1 = np.transpose(noise_1, (1, 2, 0))
+#         cv2.imwrite(f"noise_0.png", noise_0)
+#         cv2.imwrite(f"noise_1.png", noise_1)
+
+#         img_0 = img_0_noisy
+#         img_1 = img_1_noisy
+        
+
+#     if img_0.shape != img_1.shape: 
+#         print("Error: The two input images should have the same size and the same channel")
+#         quit()
+
+#     if args.T > 2 * args.w - 3:
+#         print("Error: Frequency separator T and block size w should satisfy T<=2*w-3")
+#         quit()
+        
+
+#     start = time.time()
+    
+#     # args.T = args.w + 1
+
+#     scale = 0
+
+#     # save image for result visualization
+#     img_0_v = np.transpose(img_0, (1, 2, 0))
+#     img_1_v = np.transpose(img_1, (1, 2, 0))
+#     cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
+#     cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
+
+#     print("###### Output ###### \n")
+
+#     while scale <= args.multiscale:
+
+#         img_0 = img_0.astype(np.float32)
+#         img_1 = img_1.astype(np.float32)
+
+#         factor = 2**scale
+
+#         if args.T == -1:
+#             args.T = args.w + 1
+
+#         intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile * (0.5**scale), \
+#                 bins=args.bins, s=args.search_range, f=factor)
+        
+        
+#         # intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
+#                 # bins=args.bins, s=args.search_range)
+
+
+#         print()
+#         print(f"scale {scale} \n")
+#         print("intensities:")
+#         print(intensities, "\n")
+
+#         print("noise variances:")
+#         print(variances, "\n")
+
+#         print(f"time spent: {time.time() - start} s")
+
+#         # save image for result visualization
+#         # img_0_v = np.transpose(img_0, (1, 2, 0))
+#         # img_1_v = np.transpose(img_1, (1, 2, 0))
+#         # cv2.imwrite(f"noisy_0_s{scale}.png", img_0_v.astype(np.uint8))
+#         # cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
+
+#         if args.add_noise == True:
+#             a = args.noise_a # / 4**scale
+#             b = args.noise_b # / 4**scale
+
+#             utils.plot_noise_curve(intensities, variances, a=a, b=b, fname=f"curve_s{scale}.png")
+
+#             variances_gt = a + b * intensities
+
+#             abs_errors = np.abs(variances_gt - variances)
+
+#             print("Absolute errors:")
+#             print(abs_errors, "\n")
+
+#             print("Mean relative error:")
+#             print((abs_errors / variances_gt).mean(), "\n")
+
+#         else:
+#             utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
+        
+#         scale += 1
+    
+def main():
     print("Parameters:")
     print(args)
     print()
+
+    args.im_0 = rename_file_by_ext(args.im_0)
+    args.im_1 = rename_file_by_ext(args.im_1)
     
-
-    img_0 = utils.read_img(args.im_0, grayscale=args.grayscale)
-    img_1 = utils.read_img(args.im_1, grayscale=args.grayscale)
-
-    if args.add_noise == True:
-        img_0_noisy = utils.add_noise(img_0, args.noise_a, args.noise_b)
-        img_1_noisy = utils.add_noise(img_1, args.noise_a, args.noise_b)
-
-        noise_0 = img_0_noisy - img_0
-        noise_1 = img_1_noisy - img_1
-
-        # scale noise for visualization
-        max_val = np.max((np.max(noise_0), np.max(noise_1)))
-        noise_0 = np.uint8(np.abs(noise_0) / max_val * 255)
-        noise_1 = np.uint8(np.abs(noise_1) / max_val * 255)
-        print(noise_0.shape)
-        noise_0 = np.transpose(noise_0, (1, 2, 0))
-        noise_1 = np.transpose(noise_1, (1, 2, 0))
-        cv2.imwrite(f"noise_0.png", noise_0)
-        cv2.imwrite(f"noise_1.png", noise_1)
-
-        img_0 = img_0_noisy
-        img_1 = img_1_noisy
-        
-
-    if img_0.shape != img_1.shape: 
-        print("Error: The two input images should have the same size and the same channel")
-        quit()
-
-    if args.T > 2 * args.w - 3:
-        print("Error: Frequency separator T and block size w should satisfy T<=2*w-3")
-        quit()
-        
-
-    start = time.time()
-    
-    # args.T = args.w + 1
-
-    scale = 0
-
-    # save image for result visualization
-    img_0_v = np.transpose(img_0, (1, 2, 0))
-    img_1_v = np.transpose(img_1, (1, 2, 0))
-    cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
-    cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
-
-    print("###### Output ###### \n")
-
-    while scale <= args.multiscale:
-
-        img_0 = img_0.astype(np.float32)
-        img_1 = img_1.astype(np.float32)
-
-        factor = 2**scale
-
-        if args.T == -1:
-            args.T = args.w + 1
-
-        intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile * (0.5**scale), \
-                bins=args.bins, s=args.search_range, f=factor)
-        
-        
-        # intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.quantile/100, \
-                # bins=args.bins, s=args.search_range)
-
-
-        print()
-        print(f"scale {scale} \n")
-        print("intensities:")
-        print(intensities, "\n")
-
-        print("noise variances:")
-        print(variances, "\n")
-
-        print(f"time spent: {time.time() - start} s")
-
-        # save image for result visualization
-        # img_0_v = np.transpose(img_0, (1, 2, 0))
-        # img_1_v = np.transpose(img_1, (1, 2, 0))
-        # cv2.imwrite(f"noisy_0_s{scale}.png", img_0_v.astype(np.uint8))
-        # cv2.imwrite(f"noisy_1_s{scale}.png", img_1_v.astype(np.uint8))
-
-        if args.add_noise == True:
-            a = args.noise_a # / 4**scale
-            b = args.noise_b # / 4**scale
-
-            utils.plot_noise_curve(intensities, variances, a=a, b=b, fname=f"curve_s{scale}.png")
-
-            variances_gt = a + b * intensities
-
-            abs_errors = np.abs(variances_gt - variances)
-
-            print("Absolute errors:")
-            print(abs_errors, "\n")
-
-            print("Mean relative error:")
-            print((abs_errors / variances_gt).mean(), "\n")
-
-        else:
-            utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
-        
-        scale += 1
-    
-def main():
+    if args.T == -1:
+        args.T = args.w + 1
 
     supported_ext = [".tif", ".tiff", ".dng", ".png", "jpg", "jpeg"]
 
@@ -183,12 +210,11 @@ def main():
     assert extension_0 == extension_1, \
         f"The two input images must be in the same format, but `{extension_0}` and `{extension_1}` were got."
     
-    if args.T == -1:
-        args.T = args.w + 1
-
-    print("Parameters:")
-    print(args)
-    print()
+    if args.multiscale == -1:
+        if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
+            args.multiscale = 1 # no need of multiscale estimation for raw images
+        else:
+            args.multiscale = 4
 
     img_0 = utils.read_img(args.im_0, grayscale=args.grayscale)
     img_1 = utils.read_img(args.im_1, grayscale=args.grayscale)
@@ -232,11 +258,7 @@ def main():
 
     print("###### Output ###### \n")
 
-    if args.multiscale == -1:
-        if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
-            args.multiscale = 1 # no need of multiscale estimation for raw images
-        else:
-            args.multiscale = 4
+    
 
     for scale in range(args.multiscale):
 

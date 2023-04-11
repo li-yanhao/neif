@@ -29,6 +29,7 @@ from numpy.random import RandomState, SeedSequence
 
 from skimage.util.shape import view_as_blocks
 from scipy.ndimage import gaussian_filter
+import skimage.io as iio
 
 
 def read_img(fname: str, grayscale:bool=False):
@@ -56,21 +57,22 @@ def read_img(fname: str, grayscale:bool=False):
     """
 
     demosaic = False
-    if fname.endswith(".tiff") or fname.endswith(".dng"):
+    if fname.endswith(".dng"):
         with rawpy.imread(fname) as raw:
             img = raw.raw_image.copy().astype(np.float32)
         if not grayscale:
             demosaic = True
-    if fname.endswith(".tif"):
-        img = cv2.imread(fname, -1).astype(np.float32)
-        if not grayscale:
-            demosaic = True
-    elif fname.endswith(".png") or fname.endswith(".jpg") or fname.endswith(".jpeg"):
-        img = cv2.imread(fname, -1).astype(np.float32)
+    else:
+        img = iio.imread(fname, plugin='pil').astype(np.float32)
+
+    # if fname.endswith(".tif") or fname.endswith(".tiff") or fname.endswith(".tif") or fname.endswith(".tif"):
+    #     img = cv2.imread(fname, -1).astype(np.float32)
+    #     if not grayscale:
+    #         demosaic = True
+    # elif fname.endswith(".png") or fname.endswith(".jpg") or fname.endswith(".jpeg"):
+    #     img = cv2.imread(fname, -1).astype(np.float32)
 
     if demosaic:
-        # if np.ndim(img) == 3:
-            # raise Exception("Cannot demosaick a multi-channel image")
         # Only accept 4 channels so far
         img = np.array([img[::2, ::2], img[::2, 1::2],
                        img[1::2, ::2], img[1::2, 1::2]])
@@ -81,9 +83,8 @@ def read_img(fname: str, grayscale:bool=False):
         else:
             # channels == 3, color image
             img = np.transpose(img, (2, 0, 1))
-            # change in RGB
-            img = img[::-1, :, :]
 
+    img = np.ascontiguousarray(img)
     assert np.ndim(img) == 3
 
     return img
