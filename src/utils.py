@@ -69,8 +69,7 @@ def read_img(fname: str, grayscale:bool=False):
             pass
         if not success:
             try:
-                with rawpy.imread(fname) as raw:
-                    img = raw.raw_image.copy().astype(np.float32)
+                img = iio.imread(fname, plugin='pil').astype(np.float32)
                 success = True
             except:
                 pass
