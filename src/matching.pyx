@@ -26,8 +26,6 @@ cimport numpy as np
 
 from skimage.util import view_as_windows, view_as_blocks
 from scipy.fft import dctn, fft2, ifft2
-# import cv2
-# from scipy.signal import convolve2d
 # from scipy import interpolate
 from scipy.ndimage import gaussian_filter, maximum_filter
 from scipy.fft import dctn
@@ -65,7 +63,7 @@ def img_blur(img):
         Blurred image in float
     """
 
-    img_blur = gaussian_filter(img, sigma=1, mode="nearest")
+    img_blur = gaussian_filter(img, sigma=1, truncate=2, mode="nearest")
     return img_blur
 
 
@@ -73,7 +71,7 @@ def img_blur(img):
 @cython.wraparound(False)
 def convolve2d_sum(np.ndarray img, int h, int w):
     """ Given a raw image, compute the sums of overlapping blocks
-        (See Algo. 2 of Sec. 5 in the paper)
+        (See Algo. 2 in the paper)
 
     Parameters
     ----------
@@ -107,7 +105,7 @@ def convolve2d_sum(np.ndarray img, int h, int w):
 @cython.wraparound(False)
 def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, int w, int th, int s):
     """ Dividing two images into wxw blocks. For each block in img_ref search the matched block in img_mov within a search range.
-        (See Algo. 1 of Sec. 5 in the paper)
+        (See Algo. 1 in the paper)
 
     Parameters
     ----------
@@ -166,7 +164,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
             cost_of_inner_blks = convolve2d_sum(img_diff_offsets[off_i, off_j], w, w)[th:-th, th:-th] # (H - 2s - 2th - w + 1, ...)
             cost_of_offsets[off_i, off_j] = cost_of_outer_blks - cost_of_inner_blks
 
-    assert np.all(cost_of_offsets >= 0)
+    assert np.all(cost_of_offsets >= -1e-5), f"found min(cost_of_offsets) = {np.min(cost_of_offsets)}"
 
     cdef np.int32_t[:, :] pos_ref_view = pos_ref
     cdef np.int32_t[:, :] pos_mov_view = pos_mov
@@ -202,7 +200,7 @@ def pixel_match(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov
 
 cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
     """ Compute the low frequency energy of a DCT block
-        (See Algo. 6 of Sec. 5 in the paper)
+        (See Algo. 6 in the paper)
     
     Parameters
     ----------
@@ -231,10 +229,10 @@ cdef inline float compute_low_freq_energy(np.float32_t[:, :] D, int w, int T):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
+def select_block_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
         np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int T, float q):
-    """ Select a percentile of block pairs whose difference have the least low-frequency energies
-        (See Algo. 4 of Sec. 5 in the paper)
+    """ Select a quantile of block pairs whose difference have the least low-frequency energies
+        (See Algo. 4 in the paper)
 
     Parameters
     ----------
@@ -251,7 +249,7 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
     q: float
-        percentile of selected blocks, in [0, 1]
+        quantile of selected blocks, in [0, 1]
 
     Returns
     -------
@@ -269,7 +267,8 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
     cdef np.float32_t[:] E_view = E
     
-    dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    blks_diff = np.array(blks_ref - blks_mov, dtype=np.float32)
+    dct_blks_diff = dctn(blks_diff, axes=(-1,-2), overwrite_x=True, norm='ortho', workers=8) # (N, w, w)
     dct_blks_diff = dct_blks_diff.astype(np.float32)
 
     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
@@ -288,98 +287,55 @@ def select_position_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=
     return pos_selected_ref, pos_selected_mov
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
-    """ Select a percentile of block pairs whose difference have the least low-frequency energies
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
+#     """ Select a quantile of block pairs whose difference have the least low-frequency energies
+#         (See Algo. 4 in the paper)
 
-    Parameters
-    ----------
-    blks_ref: np.ndarray
-        Blocks in reference image of size (N, w, w)
-    blks_mov: np.ndarray
-        Blocks in moving image of size (N, w, w)
-    T: int
-        Threshold for separating the entries for low and high frequency DCT coefficents
-    q: float
-        percentile of selected blocks
 
-    Returns
-    -------
-    pos_selected_ref: np.ndarray
-        Selected blocks in reference image, of size (M, w, w),
-        with M = floor(N * q)
-    pos_selected_mov: np.ndarray
-        Selected blocks in moving image, of size (M, w, w)
-    """
+#     Parameters
+#     ----------
+#     blks_ref: np.ndarray
+#         Blocks in reference image of size (N, w, w)
+#     blks_mov: np.ndarray
+#         Blocks in moving image of size (N, w, w)
+#     T: int
+#         Threshold for separating the entries for low and high frequency DCT coefficents
+#     q: float
+#         quantile of selected blocks
 
-    cdef int N = blks_mov.shape[0]
-    cdef int w = blks_mov.shape[1]
+#     Returns
+#     -------
+#     pos_selected_ref: np.ndarray
+#         Selected blocks in reference image, of size (M, w, w),
+#         with M = floor(N * q)
+#     pos_selected_mov: np.ndarray
+#         Selected blocks in moving image, of size (M, w, w)
+#     """
 
-    cdef np.ndarray E = np.zeros(N, dtype=np.float32)
-    cdef np.float32_t[:] E_view = E
+#     cdef int N = blks_mov.shape[0]
+#     cdef int w = blks_mov.shape[1]
+
+#     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
+#     cdef np.float32_t[:] E_view = E
     
-    dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+#     dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
-    cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
-    cdef np.float32_t[:, :] dct_blk_view
+#     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
+#     cdef np.float32_t[:, :] dct_blk_view
 
-    cdef int i
-    for i in range(N):
-        dct_blk_view = dct_blks_diff_view[i]
-        E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
+#     cdef int i
+#     for i in range(N):
+#         dct_blk_view = dct_blks_diff_view[i]
+#         E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
 
-    I = np.argsort(E)[:int(N * q)]
+#     I = np.argsort(E)[:int(N * q)]
 
-    blks_selected_ref = blks_ref[I]
-    blks_selected_mov = blks_mov[I]
+#     blks_selected_ref = blks_ref[I]
+#     blks_selected_mov = blks_mov[I]
 
-    return blks_selected_ref, blks_selected_mov
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def partition_obsolete(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
-              np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int b):
-    """ Partition the block pairs into bins according to their mean intensities
-        (See Algo. 3 of Sec. 5 in the paper)
-
-    Parameters
-    ----------
-    img_ref: np.ndarray
-        Reference image of size (H, W)
-    img_mov: np.ndarray
-        Moving image of size (H, W)
-    pos_ref: np.ndarray
-        Block positions in reference image, of size (N, 2)
-    pos_mov: np.ndarray
-        Block positions in moving image, of size (N, 2)
-    w: int
-        Block size
-    b : int
-        number of bins
-
-    Returns
-    -------
-    bins_pos_ref: np.ndarray
-        Bins of block positions in reference image, of size (b, M, 2), with M
-        the number of blocks per bin
-    bins_pos_mov: np.ndarray
-        Bins of block positions in moving image, of size (b, M, 2)
-    """
-    
-    blks_ref = view_as_windows(img_ref, (w, w), step=(1, 1))[pos_ref[:,0], pos_ref[:, 1]] # (N, w, w)
-    blks_mov = view_as_windows(img_mov, (w, w), step=(1, 1))[pos_mov[:,0], pos_mov[:, 1]] # (N, w, w)
-
-    L = (np.mean(blks_ref, axis=(1, 2)) + np.mean(blks_mov, axis=(1, 2))) / 2 # (N, )
-    
-    I = np.argsort(L)
-    I_in_bins = I[:len(L) // b * b].reshape(b, -1)
-
-    bins_pos_ref = pos_ref[I_in_bins]
-    bins_pos_mov = pos_mov[I_in_bins]
-
-    return bins_pos_ref, bins_pos_mov
+#     return blks_selected_ref, blks_selected_mov
 
 
 @cython.boundscheck(False)
@@ -387,7 +343,7 @@ def partition_obsolete(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] 
 def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
               np.ndarray[np.int32_t, ndim=2] pos_ref, np.ndarray[np.int32_t, ndim=2] pos_mov, int w, int b):
     """ Partition the block pairs into bins according to their mean intensities
-        (See Algo. 3 of Sec. 5 in the paper)
+        (See Algo. 3 in the paper)
 
     Parameters
     ----------
@@ -439,11 +395,6 @@ cdef extern from "helper.h":
             float *img_ref, float *img_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
 
-    void find_best_matching_one_shot(
-            float *img_ref, float *img_mov_ups, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
-            int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
-
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def find_best_matching_func(
@@ -458,7 +409,6 @@ def find_best_matching_func(
     cdef int N = pos_ref.shape[0]
     cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] pos_mov = np.zeros((N, 2), dtype=np.uint16)
 
-    # find_best_matching / find_best_matching_one_shot
     find_best_matching(<float*> np.PyArray_DATA(img_ref),
                        <float*> np.PyArray_DATA(img_mov),
                        <np.uint16_t*> np.PyArray_DATA(pos_ref),
@@ -617,7 +567,7 @@ def subpixel_match(img_ref, img_mov, pos_ref, pos_mov_init, w: int, th: int, ord
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
+def compute_variance_from_pairs(blks_ref, blks_mov, T):
     """ Compute noise variance from block pairs
         (See Algo. 5 of Sec. 5 in the paper)
 
@@ -629,8 +579,6 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
         Blocks in moving image of size (N, w, w)
     T: int
         Threshold for separating the entries for low and high frequency DCT coefficents
-    factor: int
-        Downscaling factor.
 
     Returns
     -------
@@ -642,22 +590,7 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T, factor):
     cdef int N = blks_ref.shape[0]
     cdef int w = blks_ref.shape[1]
 
-    blks_diff = blks_mov - blks_ref
-
-    # Subscaling the block differences, see Algo. 5 of Sec. 5 in the paper
-    if factor > 1:
-        N, W, _ = blks_ref.shape
-
-        assert W % factor == 0, "The block size must be multiple of the subsample factor"
-        w = W // factor
-
-        # blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze() # (N, w, w, factor, factor)
-        # blks_diff.transpose((0, 3, 4, 1, 2))
-        # blks_diff = blks_diff.reshape(-1, w, w)
-
-        blks_diff = view_as_blocks(blks_diff, (1, factor, factor)).squeeze().mean(axis=(-1, -2)) # (N, w, w, factor, factor)
-    
-    dct_blks_diff = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    dct_blks_diff = dctn(blks_mov - blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
 
     VH = []
     cdef int i, j
@@ -772,8 +705,6 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
         frequency separator
     q: float
         quantile of selected block pairs
-    fact: int
-        Subscaling factor. 1 for non subscaling
 
     Return
     ------
@@ -806,6 +737,6 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
                 VH.append(np.mean(dct_blks[:, i, j] ** 2))
     
     variance = np.median( np.array(VH) ) / 2
-    intensity = (blks_mov.mean() + blks_ref.mean()) / 2
+    intensity = (blks_mov[I].mean() + blks_ref[I].mean()) / 2
 
     return intensity, variance

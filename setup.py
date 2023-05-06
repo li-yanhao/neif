@@ -57,7 +57,7 @@ if platform.system() == "Linux":
                      language="c",)
 
 elif platform.system() == "Darwin":
-    os.environ['CC'] = 'gcc-12'
+    os.environ['CC'] = 'gcc-13'
     exts = Extension(name='matching',
                      sources=source_files,
                      include_dirs=[numpy.get_include()],

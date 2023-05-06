@@ -25,9 +25,9 @@ import time
 from skimage.util import view_as_windows, view_as_blocks
 
 
-def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, scale=0):
+def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int):
     """ Main function: estimate noise curves from two successive images
-        (See Algo. 7 of Sec. 5 and Algo. 9 of Sec. 8 in the paper)
+        (See Algo. 7 in the paper)
 
     Parameters
     ----------
@@ -48,8 +48,6 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     s: int
         Half of search range for patch matching
         Note that the range of a squared search region window = search_range * 2 + 1
-    scale: int
-        The downsampling scale. The image block pairs will be downsampled by factor 2^scale. 0 for no downscaling, 
 
     Returns
     -------
@@ -68,49 +66,42 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     intensities = np.zeros((C, bins))
     variances = np.zeros((C, bins))
 
-    # Use larger block for matching, so that difference blocks can be subsampled at correct size
-    f = 2**scale # downscaling factor
-    w_up = f * w
 
     for ch in range(C):
         img_ref_chnl = img_ref[ch]
         img_mov_chnl = img_mov[ch]
         pos_ref, pos_mov = M.pixel_match(
-            img_ref_chnl, img_mov_chnl, w_up, th, s)
+            img_ref_chnl, img_mov_chnl, w, th, s)
 
         pos_ref, pos_mov = M.remove_saturated(
-            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up)
+            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w)
 
         pos_ref_in_bins, pos_mov_in_bins = M.partition(
-            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up, bins)
+            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, bins)
 
-        blks_ref = view_as_windows(img_ref_chnl, (w_up, w_up), step=(1, 1))
-        blks_mov = view_as_windows(img_mov_chnl, (w_up, w_up), step=(1, 1))
+        blks_ref = view_as_windows(img_ref_chnl, (w, w), step=(1, 1))
+        blks_mov = view_as_windows(img_mov_chnl, (w, w), step=(1, 1))
 
         for b in range(bins):
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
 
-            pos_ref_selected, pos_mov_selected = M.select_position_pairs(
-                img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_up, T, q)
-
+            pos_ref_selected, pos_mov_selected = M.select_block_pairs(
+                img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w, T, q)
             blks_ref_in_bin = blks_ref[pos_ref_selected[:,0], 
                                        pos_ref_selected[:,1]].astype(np.float32)
-
             blks_mov_in_bin = blks_mov[pos_mov_selected[:,0], 
                                        pos_mov_selected[:,1]].astype(np.float32)
-
             variance = M.compute_variance_from_pairs(
-                blks_ref_in_bin, blks_mov_in_bin, T, f)
+                blks_ref_in_bin, blks_mov_in_bin, T)
             intensity = (blks_ref_in_bin.mean() + blks_mov_in_bin.mean()) / 2
-
             variances[ch, b] = variance
             intensities[ch, b] = intensity
 
     return intensities, variances
 
 
-def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, subpx_order: int = 0, scale=0):
+def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, subpx_order: int = 0, downscale=0):
     """ Main function: estimate noise curves from two successive images
 
     Parameters
@@ -155,8 +146,7 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
     variances = np.zeros((C, bins))
 
     # Use larger block for matching, so that difference blocks can be subsampled at correct size
-    w_match = 2**scale * w
-
+    w_match = 2**downscale * w
 
     for ch in range(C):
         img_ref_chnl = img_ref[ch]
@@ -170,13 +160,6 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
             img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match)
         print("end M.remove_saturated", time.time())
 
-        # remove blocks near the borders so that subpixel matching can work
-        border = 4
-        mask = (pos_mov[:, 0] >= border + th) & (pos_mov[:, 0] < H - w_match + 1 - th - border) \
-            & (pos_mov[:, 1] >= border + th) & (pos_mov[:, 1] < W - w_match + 1 - th - border)
-        pos_ref = pos_ref[mask]
-        pos_mov = pos_mov[mask]
-
         print("start M.partition", time.time())
         pos_ref_in_bins, pos_mov_in_bins = M.partition(
             img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match, bins)
@@ -189,7 +172,7 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
             pos_ref = pos_ref_in_bins[b]
             pos_mov = pos_mov_in_bins[b]
 
-            pos_ref_selected, pos_mov_selected = M.select_position_pairs(
+            pos_ref_selected, pos_mov_selected = M.select_block_pairs(
                 img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match, T, 3 * q)
 
             pos_ref_selected_in_bins.append(pos_ref_selected)
@@ -217,11 +200,12 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
         print("end subpixel_match", time.time())
 
         # downsample the matched blocks to the required scale with average filter
+        # (see Alg. 11 in the paper)
         print("start avg_filter", time.time())
         blks_ref_in_bins = np.ascontiguousarray(blks_ref_in_bins)
         blks_mov_in_bins = np.ascontiguousarray(blks_mov_in_bins)
-        blks_ref_in_bins = np.mean(view_as_blocks(blks_ref_in_bins, (1, 2**scale, 2**scale)), axis=(-1, -2, -3)) # (N, w, w)
-        blks_mov_in_bins = np.mean(view_as_blocks(blks_mov_in_bins, (1, 2**scale, 2**scale)), axis=(-1, -2, -3)) # (N, w, w)
+        blks_ref_in_bins = np.mean(view_as_blocks(blks_ref_in_bins, (1, 2**downscale, 2**downscale)), axis=(-1, -2, -3)) # (N, w, w)
+        blks_mov_in_bins = np.mean(view_as_blocks(blks_mov_in_bins, (1, 2**downscale, 2**downscale)), axis=(-1, -2, -3)) # (N, w, w)
         print("end avg_filter", time.time())
 
         # blks_ref_selected and blks_mov_selected are already sorted by their intensities
@@ -245,7 +229,7 @@ def estimate_noise_curve_subpixel(img_ref, img_mov, w: int, T: int, th: int, q: 
 
 def compute_median_curve(in_curves):
     """ Compute the median curve given a set of curves
-        (See Algo. 8 of Sec. 5 in the paper)
+        (See Algo. 8 in the paper)
 
     Parameters
     ----------
