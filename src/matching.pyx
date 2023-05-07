@@ -590,7 +590,7 @@ def compute_variance_from_pairs(blks_ref, blks_mov, T):
     cdef int N = blks_ref.shape[0]
     cdef int w = blks_ref.shape[1]
 
-    dct_blks_diff = dctn(blks_mov - blks_ref, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    dct_blks_diff = dctn(blks_mov - blks_ref, axes=(-1,-2), norm='ortho', workers=8, overwrite_x=True) # (N, w, w)
 
     VH = []
     cdef int i, j
@@ -717,7 +717,7 @@ def estimate_intensity_and_variance(blks_ref, blks_mov,
     N, w, _ = blks_ref.shape
 
     blks_diff = np.array(blks_mov - blks_ref)
-    dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
+    dct_blks = dctn(blks_diff, axes=(-1,-2), norm='ortho', workers=8, overwrite_x=True) # (N, w, w)
     
     # Low-frequency energy
     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
