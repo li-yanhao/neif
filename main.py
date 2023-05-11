@@ -42,10 +42,10 @@ parser.add_argument('-noise_a', type=float, default=0.2,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=0.2,
                     help='Noise model parameter: b')
-# parser.add_argument('-multiscale', type=int, default=-1,
-                    # help='Number of scales for downscaling. -1 for automatic selection of scales. '
-                    # 'By default 1 scale is used for raw images and 3 scales are used for processed images.')
-parser.add_argument('-f_us', type=int, default=0,
+parser.add_argument('-multiscale', type=int, default=-1,
+                    help='Number of scales for downscaling. -1 for automatic selection of scales. '
+                    'By default 1 scale is used for raw images and 3 scales are used for processed images.')
+parser.add_argument('-subpx_order', type=int, default=0,
                     help='Upsampling scale for subpixel matching')
 args = parser.parse_args()
 
@@ -106,12 +106,11 @@ def main():
     assert extension_0 == extension_1, \
         f"The two input images must be in the same format, but `{extension_0}` and `{extension_1}` were got."
     
-    if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
-        num_scale = 1
-        is_raw = True
-    else:
-        num_scale = 4
-        is_raw = False
+    if args.multiscale == -1:
+        if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
+            args.multiscale = 1 # no need of multiscale estimation for raw images
+        else:
+            args.multiscale = 4
 
     img_0 = utils.read_img(args.im_0, grayscale=args.g)
     img_1 = utils.read_img(args.im_1, grayscale=args.g)
@@ -130,7 +129,6 @@ def main():
         print(noise_0.shape)
         noise_0 = np.transpose(noise_0, (1, 2, 0))
         noise_1 = np.transpose(noise_1, (1, 2, 0))
-        
         cv2.imwrite(f"noise_0.png", noise_0)
         cv2.imwrite(f"noise_1.png", noise_1)
 
@@ -157,7 +155,7 @@ def main():
 
     img_0 = img_0.astype(np.float32)
     img_1 = img_1.astype(np.float32)
-    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
+    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.subpx_order, is_raw=True)
 
     print("###### Output ###### \n")
     num_scale = intensities.shape[0]
@@ -175,6 +173,24 @@ def main():
         utils.plot_noise_curve(intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
 
 
+    # for scale in range(args.multiscale):
+
+    #     img_0 = img_0.astype(np.float32)
+    #     img_1 = img_1.astype(np.float32)
+
+    #     intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q * 0.7**scale, bins=args.bins, s=args.s, subpx_order=args.subpx_order, downscale=scale)
+        
+    #     save_to_txt(intensities, variances, scale)
+
+    #     print()
+    #     print(f"scale {scale} \n")
+    #     print("intensities:")
+    #     print(intensities, "\n")
+
+    #     print("noise variances:")
+    #     print(variances, "\n")
+        
+    #     utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
 
     print(f"time spent: {time.time() - start} s")
 

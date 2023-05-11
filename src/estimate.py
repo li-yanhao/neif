@@ -335,7 +335,6 @@ def estimate_noise_curve_v3(img_ref, img_mov, w: int, T: int,  q: float, th: int
 
                 variances[scale, ch, b] = variance
                 intensities[scale, ch, b] = intensity
-        print("Processing at scale {} is done.")
 
     return intensities, variances
 
