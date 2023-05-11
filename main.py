@@ -1,7 +1,7 @@
 
 import time
 from src.estimate import estimate_noise_curve
-from src.estimate import estimate_noise_curve_v2
+from src.estimate import estimate_noise_curve_v2, estimate_noise_curve_v3
 
 import src.utils as utils
 import cv2
@@ -90,8 +90,8 @@ def main():
     print(args)
     print()
 
-    args.im_0 = rename_file_by_ext(args.im_0)
-    args.im_1 = rename_file_by_ext(args.im_1)
+    # args.im_0 = rename_file_by_ext(args.im_0)
+    # args.im_1 = rename_file_by_ext(args.im_1)
     
     if args.T == -1:
         args.T = args.w + 1
@@ -152,27 +152,45 @@ def main():
     cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
     cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
 
+
+    img_0 = img_0.astype(np.float32)
+    img_1 = img_1.astype(np.float32)
+    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.subpx_order, is_raw=True)
+
     print("###### Output ###### \n")
-
-    
-    for scale in range(args.multiscale):
-
-        img_0 = img_0.astype(np.float32)
-        img_1 = img_1.astype(np.float32)
-
-        intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q * 0.7**scale, bins=args.bins, s=args.s, subpx_order=args.subpx_order, downscale=scale)
-        
-        save_to_txt(intensities, variances, scale)
+    num_scale = intensities.shape[0]
+    for scale in range(num_scale):
+        save_to_txt(intensities[scale], variances[scale], scale)
 
         print()
         print(f"scale {scale} \n")
         print("intensities:")
-        print(intensities, "\n")
+        print(intensities[scale], "\n")
 
         print("noise variances:")
-        print(variances, "\n")
+        print(variances[scale], "\n")
         
-        utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
+        utils.plot_noise_curve(intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
+
+
+    # for scale in range(args.multiscale):
+
+    #     img_0 = img_0.astype(np.float32)
+    #     img_1 = img_1.astype(np.float32)
+
+    #     intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q * 0.7**scale, bins=args.bins, s=args.s, subpx_order=args.subpx_order, downscale=scale)
+        
+    #     save_to_txt(intensities, variances, scale)
+
+    #     print()
+    #     print(f"scale {scale} \n")
+    #     print("intensities:")
+    #     print(intensities, "\n")
+
+    #     print("noise variances:")
+    #     print(variances, "\n")
+        
+    #     utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
 
     print(f"time spent: {time.time() - start} s")
 

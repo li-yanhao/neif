@@ -53,7 +53,7 @@ def read_img(fname: str, grayscale:bool=False):
     img : np.ndarray
         Image in float32, of size (C, H, W)
         C = 1 for grayscale image
-        C = 3 for 
+        C = 3 for color image
     """
 
     if fname.endswith(".dng"):
@@ -74,7 +74,13 @@ def read_img(fname: str, grayscale:bool=False):
             except:
                 pass
     else:
-        img = iio.imread(fname, plugin='pil').astype(np.float32)
+        # img = iio.imread(fname, plugin='pil').astype(np.float32)
+
+        # YCbCr space
+        img = iio.imread(fname, plugin='pil')
+        if np.ndim(img) == 2:
+            img = img[..., None]
+
     
     demosaic = False
     if fname.endswith(".dng") or fname.endswith(".tif") or fname.endswith(".tiff"):

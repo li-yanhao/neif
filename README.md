@@ -38,11 +38,9 @@ python setup.py build_ext -i
 ## Usage
 
 ```
-usage: main.py [-h] [-bins BINS] [-quantile QUANTILE] [-search_range SEARCH_RANGE] [-w W] [-T T] [-th TH] [-grayscale] [-add_noise] [-noise_a NOISE_A]
-               [-noise_b NOISE_B] [-multiscale MULTISCALE] [-subpx_order SUBPX_ORDER]
-               im_0 im_1
+usage: main.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-multiscale MULTISCALE] [-subpx_order SUBPX_ORDER] im_0 im_1
 
-Video Signal-Dependent Noise Estimation via Inter-frame Prediction
+Video Signal-Dependent Noise Estimation via Inter-frame Prediction. (c) 2022 Yanhao Li. Under license GNU AGPL.
 
 positional arguments:
   im_0                  First frame filename
@@ -51,18 +49,17 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -bins BINS            Number of bins
-  -quantile QUANTILE    Quantile of block pairs
-  -search_range SEARCH_RANGE
-                        Search range of patch matching
+  -q Q                  Quantile of block pairs
+  -s S                  Search radius of patch matching
   -w W                  Block size
   -T T                  Frequency separator
   -th TH                Thickness of ring for patch matching
-  -grayscale            Whether the input image is in grayscalenoise estimation
+  -g                    Whether the input image is in grayscalenoise estimation
   -add_noise            True for adding simulated noise
   -noise_a NOISE_A      Noise model parameter: a
   -noise_b NOISE_B      Noise model parameter: b
   -multiscale MULTISCALE
-                        Number of scales for downscaling. -1 for automatic selection of scales.
+                        Number of scales for downscaling. -1 for automatic selection of scales. By default 1 scale is used for raw images and 3 scales are used for processed images.
   -subpx_order SUBPX_ORDER
                         Upsampling scale for subpixel matching
 ```
@@ -76,32 +73,32 @@ frame t             |  frame t+1
 ![](frame0.png)  |  ![](frame1.png)
 
 ``` bash
-python main.py frame0.png frame1.png
+python main.py  frame0.tiff  frame1.tiff -g -add_noise -noise_a 0.2 -noise_b 0.2  -q 0.005 
 ```
 
 The output is:
 ``` bash
 Parameters:
-Namespace(T=-1, add_noise=False, bins=16, demosaic=False, im_0='frame0.png', im_1='frame1.png', multiscale=0, noise_a=3, noise_b=3, quantile=5, search_range=5, th=3, w=8)
+Namespace(T=-1, add_noise=True, bins=16, g=True, im_0='frame3.tiff', im_1='frame4.tiff', multiscale=-1, noise_a=0.2, noise_b=0.2, q=0.005, s=5, subpx_order=0, th=3, w=8)
 
+(1, 540, 960)
 ###### Output ###### 
-Parameters:
-Namespace(T=-1, add_noise=False, bins=16, demosaic=False, im_0='frame0.png', im_1='frame1.png', multiscale=0, noise_a=3, noise_b=3, quantile=5, search_range=5, th=3, w=8)
 
-###### Output ###### 
+
+scale 0 
 
 intensities:
-[[ 10.87425613  14.6869421   17.64328384  20.18724823  22.4411869
-   24.70471954  26.92080116  29.29936409  31.69148064  34.67023849
-   38.94697571  44.32183456  49.53039932  75.42604065  96.12397766
-  140.07905579]] 
+[[ 13.15433502  17.89377975  21.36661911  24.34333611  26.74415207
+   29.31756973  31.7977562   34.55039215  37.37158203  40.88022614
+   45.40148926  51.57419205  58.02767944  81.36729431 106.68527222
+  146.28607178]] 
 
 noise variances:
-[[ 2.75614262  3.46342993  4.06296873  4.23521328  4.80944681  5.42198753
-   5.72610235  6.65154648  6.62480831  7.52370214  8.50011253  9.52011967
-  10.69717789 18.39974976 20.59931374 29.30751991]] 
+[[ 2.54073191  3.89664531  4.47674894  4.89839888  5.58000517  6.05073309
+   6.8103528   7.52948427  7.95527697  8.80804539  9.48500061 10.48468876
+  11.62872887 17.89460945 22.79336739 31.26366806]] 
 
-time spent: 2.338838815689087 s
+time spent: 2.1773910522460938 s
 
 ```
 
