@@ -38,11 +38,11 @@ python setup.py build_ext -i
 
 ## Native noise estimator for two raw images
 
-Usage:
+The native noise estimator only works on two consecutive raw images. Only the `.tif`, `.tiff` and `.dng` images are supported as input.  If the input raw images are in gray scale, use flag `-g` so that demosaicing is not processed, otherwise the raw images are demosaiced into 4-channel images and result in 4 noise curves.
+
+You can set up the number of bins, quantile of the block pairs, search radius of block matching, block size, frequency separator and thickness of the surrounding ring of block for matching. You can also add additional noise to the input images with noise model $ variance = a + b \times intensity $. Usage:
 
 ``` bash
-$ python main.py -h
-
 usage: main.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] im_0 im_1
 
 Video Signal-Dependent Noise Estimation via Inter-frame Prediction. (c) 2022 Yanhao Li. Under license GNU AGPL.
@@ -53,16 +53,16 @@ positional arguments:
 
 optional arguments:
   -h, --help        show this help message and exit
-  -bins BINS        Number of bins
-  -q Q              Quantile of block pairs
-  -s S              Search radius of patch matching
-  -w W              Block size
-  -T T              Frequency separator
-  -th TH            Thickness of ring for patch matching
-  -g                Whether the input images are in grayscalenoise estimation
-  -add_noise        True for adding simulated noise
-  -noise_a NOISE_A  Noise model parameter: a
-  -noise_b NOISE_B  Noise model parameter: b
+  -bins BINS        Number of bins (default: 16)
+  -q Q              Quantile of block pairs (default: 0.05)
+  -s S              Search radius of patch matching (default: 5)
+  -w W              Block size (default: 8)
+  -T T              Frequency separator (default: w+1)
+  -th TH            Thickness of ring for patch matching (default: 3)
+  -g                Whether the input images are in grayscale (default: False)
+  -add_noise        True for adding simulated noise, with noise model: variance = a + intensity * b. (default: False)
+  -noise_a NOISE_A  Noise model parameter: a (default: 0.2)
+  -noise_b NOISE_B  Noise model parameter: b (default: 0.2)
 ```
 
 
@@ -75,14 +75,22 @@ The noise curves are saved to `curve_s0.txt` with B rows and 2C columns, where t
 
 <img src="readme_img/curve_s0_raw.png" alt="alt text" width="600"/>
 
-## Extended noise estimator for two processed images
+Or estimate noise curves with 24 bins, 5% of block pairs, block size at 9, thickness of ring at 4:
 
-Usage:
+``` bash
+$ python main.py -bins 24 -q 0.05 -w 9 -th 4 frame0.tiff  frame1.tiff 
+```
+
+
+## Extended noise estimator
+
+The extension of the noise estimator that incorporates both subpixel matching and multiscale noise estimation is available in `main_v2.py`. Both raw images in `.tif`, `.tiff` and `.dng` formats and processed images in `.jpg` and `.png` formats are supported. If the input images are raw images, the noise will be estimated only at the original scale. If the input images are processed images, the noise estimation will be processed at 4 scales. The parameter setting is similar as above. Usage:
 
 ``` bash
 $ python main_v2.py -h
 
-usage: main_v2.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-f_us F_US] im_0 im_1
+usage: main_v2.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-f_us F_US]
+                  im_0 im_1
 
 Video Signal-Dependent Noise Estimation via Inter-frame Prediction. (c) 2022 Yanhao Li. Under license GNU AGPL.
 
@@ -92,17 +100,17 @@ positional arguments:
 
 optional arguments:
   -h, --help        show this help message and exit
-  -bins BINS        Number of bins
-  -q Q              Quantile of block pairs
-  -s S              Search radius of patch matching
-  -w W              Block size
-  -T T              Frequency separator
-  -th TH            Thickness of ring for patch matching
-  -g                Whether the input images are in grayscale
-  -add_noise        True for adding simulated noise
-  -noise_a NOISE_A  Noise model parameter: a
-  -noise_b NOISE_B  Noise model parameter: b
-  -f_us F_US        Upsampling scale for subpixel matching
+  -bins BINS        Number of bins (default: 16)
+  -q Q              Quantile of block pairs (default: 0.01)
+  -s S              Search radius of patch matching (default: 5)
+  -w W              Block size (default: 8)
+  -T T              Frequency separator (default: 9)
+  -th TH            Thickness of ring for patch matching (default: 3)
+  -g                Whether the input images are in grayscale (default: False)
+  -add_noise        True for adding simulated noise (default: False)
+  -noise_a NOISE_A  Noise model parameter: a (default: 0.2)
+  -noise_b NOISE_B  Noise model parameter: b (default: 0.2)
+  -f_us F_US        Upsampling scale for subpixel matching (default: 0)
 ```
 
 

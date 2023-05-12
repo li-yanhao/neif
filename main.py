@@ -17,26 +17,26 @@ parser.add_argument('im_0', type=str,
 parser.add_argument('im_1', type=str,
                     help='Second frame filename')
 parser.add_argument('-bins', type=int, default=16,
-                    help='Number of bins')
+                    help='Number of bins (default: 16)')
 parser.add_argument('-q', type=float, default=0.01,
-                    help='Quantile of block pairs')
+                    help='Quantile of block pairs (default: 0.01)')
 parser.add_argument('-s', type=int, default=5,
-                    help='Search radius of patch matching')
+                    help='Search radius of patch matching (default: 5)')
 parser.add_argument('-w', type=int, default=8,
-                    help='Block size')
+                    help='Block size (default: 8)')
 parser.add_argument('-T', type=int, default=-1,
-                    help='Frequency separator')
+                    help='Frequency separator (default: w+1)')
 parser.add_argument('-th', type=int, default=3,
-                    help='Thickness of ring for patch matching')
+                    help='Thickness of ring for patch matching (default: 3)')
 parser.add_argument('-g', default=False,
-                    help='Whether the input images are in grayscale', action='store_true')
+                    help='Whether the input images are in grayscale (default: False)', action='store_true')
 parser.add_argument('-add_noise', default=False,
-                    help='True for adding simulated noise',
+                    help='True for adding simulated noise, with noise model: variance = a + intensity * b. (default: False)',
                     action='store_true')
 parser.add_argument('-noise_a', type=float, default=0.2,
-                    help='Noise model parameter: a')
+                    help='Noise model parameter: a (default: 0.2)')
 parser.add_argument('-noise_b', type=float, default=0.2,
-                    help='Noise model parameter: b')
+                    help='Noise model parameter: b (default: 0.2)')
 args = parser.parse_args()
 
 
@@ -58,12 +58,14 @@ def save_to_txt(intensities, variances, save_fname):
 
 
 def main():
-    print("Parameters:")
-    print(args)
-    print()
+    
 
     if args.T == -1:
         args.T = args.w + 1
+
+    print("Parameters:")
+    print(args)
+    print()
 
     supported_ext = [".tif", ".tiff", ".dng"]
 
