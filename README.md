@@ -1,8 +1,9 @@
 # Video Signal-Dependent Noise Estimation via Inter-frame Prediction
 
 This repo is the official implementation of
-the paper
-"Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction". 
+the ICIP paper
+"Video Signal-Dependent Video Noise Estimation via Inter-frame Prediction"
+and the IPOL paper "A signal-dependent video noise estimator via inter-frame signal suppression".
 
 ## Abstract
 
@@ -110,14 +111,7 @@ For instance, estimate noise curves from two successive processed images:
 ``` bash
 $ python main.py  frame0.jpg  frame1.jpg
 ```
-The noise curves at scale `?` are saved to `curve_s?.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. The curves are also plotted in `curve_s?.png`:
-
-
-``` bash
-python main.py frame0.jpg frame1.jpg 
-```
-
-The noise estimation will be processed at 4 scales for .png or .jpg images, the estimated noise curves are like:
+The noise estimation will be processed at 4 scales. The noise curves at scale `?` are saved to `curve_s?.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. 4 scales will be processed The curves are also plotted in `curve_s?.png`:
 
 | scale 0 | scale 1 |   
 |:--------------:|:-----------:|
