@@ -40,7 +40,7 @@ python setup.py build_ext -i
 
 The native noise estimator only works on two consecutive raw images. Only the `.tif`, `.tiff` and `.dng` images are supported as input.  If the input raw images are in gray scale, use flag `-g` so that demosaicing is not processed, otherwise the raw images are demosaiced into 4-channel images and result in 4 noise curves.
 
-You can set up the number of bins, quantile of the block pairs, search radius of block matching, block size, frequency separator and thickness of the surrounding ring of block for matching. You can also add additional noise to the input images with noise model $ variance = a + b \times intensity $. Usage:
+You can set up the number of bins, quantile of the block pairs, search radius of block matching, block size, frequency separator and thickness of the surrounding ring of block for matching. You can also add additional noise to the input images with noise model $variance = a + b \times intensity$. Usage:
 
 ``` bash
 usage: main.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] im_0 im_1
@@ -126,6 +126,10 @@ The noise estimation will be processed at 4 scales. The noise curves at scale `?
 | <img src="readme_img/curve_s0.png" alt="alt text" width="300"/> |  <img src="readme_img/curve_s1.png" alt="alt text" width="300"/> | 
 | scale 2 | scale 3 |
 | <img src="readme_img/curve_s2.png" alt="alt text" width="300"/> | <img src="readme_img/curve_s3.png" alt="alt text" width="300"/> |
+
+## Dataset
+
+The noiseless synthetic drone videos mentioned in the paper are now available in [drive](https://drive.google.com/file/d/1LSq6DHv7xeErqm2thi2paJXNXlCVRRpd/view?usp=sharing). The dataset contains 16 sequences. Each sequence has 20 consecutive frames in gray scale.
 
 
 
