@@ -20,7 +20,6 @@
 
 import numpy as np
 import matching as M
-import time 
 
 from skimage.util import view_as_windows, view_as_blocks
 
@@ -101,125 +100,7 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     return intensities, variances
 
 
-def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int, subpx_order: int = 0, downscale=0):
-    """ Main function: estimate noise curves from two successive images
-        
-
-    Parameters
-    ----------
-    img_ref: np.ndarray
-        Reference image of size (C, H, W).
-    img_mov: np.ndarray
-        Moving image of size (C, H, W).
-    w: int
-        Block size.
-    T: int
-        Threshold for separating the entries for low and high frequency DCT coefficents.
-    th: int
-        Thickness of surrounding ring for matching.
-    q: float
-        Percentile of blocks used for estimation.
-    bins: int
-        Number of bins.
-    s: int
-        Half of search range for patch matching.
-        Note that the range of a squared search region window = search_range * 2 + 1.
-    subpx_order: int
-        The scale of upsampling for subpixel matching. 
-        The upsampling factor is 2^subpx_order and the subpixel matching precision = (1/2)^subpx_order.
-        0 for no subpixel matching.
-    scale: int
-        The scale of downscaling. The downscaling factor is 2^scale. 0 for no downscaling.
-
-    Returns
-    -------
-    intensities: np.ndarray
-        Intensities of the noise curve, of size (C, bins).
-    variances: np.ndarray
-        Variances of the noise curve, of size (C, bins).
-    """
-
-    assert img_ref.shape == img_mov.shape
-
-    C, H, W = img_ref.shape
-
-    intensities = np.zeros((C, bins))
-    variances = np.zeros((C, bins))
-
-    # Use larger block for matching, so that difference blocks can be subsampled at correct size
-    w_match = 2**downscale * w
-
-    for ch in range(C):
-        img_ref_chnl = img_ref[ch]
-        img_mov_chnl = img_mov[ch]
-        pos_ref, pos_mov = M.pixel_match(img_ref_chnl, img_mov_chnl, w_match, th, s)
-
-        pos_ref, pos_mov = M.remove_saturated(
-            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match)
-
-        pos_ref_in_bins, pos_mov_in_bins = M.partition(
-            img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match, bins)
-
-        pos_ref_selected_in_bins = []
-        pos_mov_selected_in_bins = []
-
-        for b in range(bins):
-            pos_ref = pos_ref_in_bins[b]
-            pos_mov = pos_mov_in_bins[b]
-
-            pos_ref_selected, pos_mov_selected = M.select_block_pairs(
-                img_ref_chnl, img_mov_chnl, pos_ref, pos_mov, w_match, T, 3 * q)
-
-            pos_ref_selected_in_bins.append(pos_ref_selected)
-            pos_mov_selected_in_bins.append(pos_mov_selected)
-
-        pos_ref_selected_in_bins = np.vstack(pos_ref_selected_in_bins)
-        pos_mov_selected_in_bins = np.vstack(pos_mov_selected_in_bins)
-
-        if subpx_order > 0:
-            blks_ref_in_bins, blks_mov_in_bins = M.subpixel_match(
-                img_ref_chnl, img_mov_chnl, pos_ref_selected_in_bins, pos_mov_selected_in_bins,
-                w_match, th, order=subpx_order) # (N, w, w)
-        elif subpx_order == 0:
-            blks_ref = view_as_windows(img_ref_chnl, (w_match, w_match), step=(1, 1))
-            blks_mov = view_as_windows(img_mov_chnl, (w_match, w_match), step=(1, 1))
-            blks_ref_in_bins = blks_ref[pos_ref_selected_in_bins[:, 0], 
-                                        pos_ref_selected_in_bins[:, 1]]
-            blks_mov_in_bins = blks_mov[pos_mov_selected_in_bins[:, 0],
-                                        pos_mov_selected_in_bins[:, 1]]
-            blks_ref_in_bins = blks_ref_in_bins.astype(np.float32)
-            blks_mov_in_bins = blks_mov_in_bins.astype(np.float32)
-        else:
-            raise Exception("`scale` should be 0 or positive")
-
-        # downsample the matched blocks to the required scale with average filter
-        # (see Alg. 11 in the paper)
-        blks_ref_in_bins = np.ascontiguousarray(blks_ref_in_bins)
-        blks_mov_in_bins = np.ascontiguousarray(blks_mov_in_bins)
-        blks_ref_in_bins = np.mean(view_as_blocks(blks_ref_in_bins, (1, 2**downscale, 2**downscale)), axis=(-1, -2, -3)) # (N, w, w)
-        blks_mov_in_bins = np.mean(view_as_blocks(blks_mov_in_bins, (1, 2**downscale, 2**downscale)), axis=(-1, -2, -3)) # (N, w, w)
-
-        # blks_ref_selected and blks_mov_selected are already sorted by their intensities
-        blks_ref_in_bins = blks_ref_in_bins[:int(
-            len(blks_ref_in_bins) // bins * bins)].reshape(bins, -1, w, w)
-        blks_mov_in_bins = blks_mov_in_bins[:int(
-            len(blks_mov_in_bins) // bins * bins)].reshape(bins, -1, w, w)
-
-        for b in range(bins):
-            blks_ref = blks_ref_in_bins[b]
-            blks_mov = blks_mov_in_bins[b]
-
-            intensity, variance = M.estimate_intensity_and_variance(
-                blks_mov, blks_ref, T, 1/3)
-
-            variances[ch, b] = variance
-            intensities[ch, b] = intensity
-
-    return intensities, variances
-
-
-
-def estimate_noise_curve_v3(img_ref, img_mov, w: int, T: int,  q: float, th: int, s: int, bins: int, f_us: int = 0, is_raw:bool=0):
+def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int,  q: float, th: int, s: int, bins: int, f_us: int = 0, is_raw:bool=0):
     """ Main function: estimate noise curves from two successive images
         
 

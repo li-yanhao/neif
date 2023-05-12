@@ -1,10 +1,8 @@
 
 import time
-from src.estimate import estimate_noise_curve
-from src.estimate import estimate_noise_curve_v2, estimate_noise_curve_v3
+from src.estimate import estimate_noise_curve_v2
 
 import src.utils as utils
-import cv2
 import numpy as np
 import os
 import magic
@@ -108,24 +106,8 @@ def main():
     img_1 = utils.read_img(args.im_1, grayscale=args.g)
 
     if args.add_noise == True:
-        img_0_noisy = utils.add_noise(img_0, args.noise_a, args.noise_b)
-        img_1_noisy = utils.add_noise(img_1, args.noise_a, args.noise_b)
-
-        noise_0 = img_0_noisy - img_0
-        noise_1 = img_1_noisy - img_1
-
-        # scale noise for visualization
-        max_val = np.max((np.max(noise_0), np.max(noise_1)))
-        noise_0 = np.uint8(np.abs(noise_0) / max_val * 255)
-        noise_1 = np.uint8(np.abs(noise_1) / max_val * 255)
-        print(noise_0.shape)
-        noise_0 = np.transpose(noise_0, (1, 2, 0))
-        noise_1 = np.transpose(noise_1, (1, 2, 0))
-        cv2.imwrite(f"noise_0.png", noise_0)
-        cv2.imwrite(f"noise_1.png", noise_1)
-
-        img_0 = img_0_noisy
-        img_1 = img_1_noisy
+        img_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
+        img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")
@@ -134,19 +116,12 @@ def main():
     if args.T > 2 * args.w - 3:
         print("Error: Frequency separator T and block size w should satisfy T<=2*w-3")
         quit()
-        
 
     start = time.time()
     
-    # save image for result visualization
-    img_0_v = np.transpose(img_0, (1, 2, 0))
-    img_1_v = np.transpose(img_1, (1, 2, 0))
-    cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
-    cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
-
     img_0 = img_0.astype(np.float32)
     img_1 = img_1.astype(np.float32)
-    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
+    intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
 
     num_scale = intensities.shape[0]
     for scale in range(num_scale):

@@ -3,7 +3,6 @@ import time
 from src.estimate import estimate_noise_curve
 
 import src.utils as utils
-import cv2
 import numpy as np
 import os
 
