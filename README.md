@@ -72,6 +72,7 @@ $ python main.py  frame0.tiff  frame1.tiff
 ```
 The noise curves are saved to `curve_s0.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. The curves are also plotted in `curve_s0.png`:
 
+<img src="readme_img/curve_s0_raw.png" alt="alt text" width="600"/>
 
 ## Extended noise estimator for two processed images
 
