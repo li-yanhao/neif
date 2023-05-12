@@ -17,7 +17,7 @@ The program has been tested both on Linux and MacOS in python3.8, and should als
 
 Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
 
-Version 1.0 released on 12/09/2022.
+Version 1.2 released on 12/05/2023.
 
 Contact: Yanhao Li ( yanhao {dot} li {at} outlook {dot} com )
 
@@ -38,80 +38,60 @@ python setup.py build_ext -i
 ## Usage
 
 ```
-usage: main.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-multiscale MULTISCALE] [-subpx_order SUBPX_ORDER] im_0 im_1
+usage: main.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-f_us F_US] im_0 im_1
 
 Video Signal-Dependent Noise Estimation via Inter-frame Prediction. (c) 2022 Yanhao Li. Under license GNU AGPL.
 
 positional arguments:
-  im_0                  First frame filename
-  im_1                  Second frame filename
+  im_0              First frame filename
+  im_1              Second frame filename
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -bins BINS            Number of bins
-  -q Q                  Quantile of block pairs
-  -s S                  Search radius of patch matching
-  -w W                  Block size
-  -T T                  Frequency separator
-  -th TH                Thickness of ring for patch matching
-  -g                    Whether the input image is in grayscalenoise estimation
-  -add_noise            True for adding simulated noise
-  -noise_a NOISE_A      Noise model parameter: a
-  -noise_b NOISE_B      Noise model parameter: b
-  -multiscale MULTISCALE
-                        Number of scales for downscaling. -1 for automatic selection of scales. By default 1 scale is used for raw images and 3 scales are used for processed images.
-  -subpx_order SUBPX_ORDER
-                        Upsampling scale for subpixel matching
+  -h, --help        show this help message and exit
+  -bins BINS        Number of bins
+  -q Q              Quantile of block pairs
+  -s S              Search radius of patch matching
+  -w W              Block size
+  -T T              Frequency separator
+  -th TH            Thickness of ring for patch matching
+  -g                Whether the input image is in grayscale
+  -add_noise        True for adding simulated noise
+  -noise_a NOISE_A  Noise model parameter: a
+  -noise_b NOISE_B  Noise model parameter: b
+  -f_us F_US        Upsampling scale for subpixel matching
 ```
 
 Please use the command `python main.py -h` to see the detailed usage.
 
-Estimate noise curve from two successive frames:
+## Demo
 
-frame t             |  frame t+1
-:---:|:---:
-![](frame0.png)  |  ![](frame1.png)
+Estimate noise curves from two successive raw frames:
 
 ``` bash
-python main.py  frame0.tiff  frame1.tiff -g -add_noise -noise_a 0.2 -noise_b 0.2  -q 0.005 
+python main.py  frame0.tiff  frame1.tiff
 ```
+The noise curves are saved to `curve_s0.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. The curves are also plotted in `curve_s0.png`:
 
-The output is:
+<img src="readme_img/curve_s0_raw.png" alt="alt text" width="600"/>
+
+Similarly, estimate noise curves from two successive jpg images:
+
 ``` bash
-Parameters:
-Namespace(T=-1, add_noise=True, bins=16, g=True, im_0='frame3.tiff', im_1='frame4.tiff', multiscale=-1, noise_a=0.2, noise_b=0.2, q=0.005, s=5, subpx_order=0, th=3, w=8)
-
-(1, 540, 960)
-###### Output ###### 
-
-
-scale 0 
-
-intensities:
-[[ 13.15433502  17.89377975  21.36661911  24.34333611  26.74415207
-   29.31756973  31.7977562   34.55039215  37.37158203  40.88022614
-   45.40148926  51.57419205  58.02767944  81.36729431 106.68527222
-  146.28607178]] 
-
-noise variances:
-[[ 2.54073191  3.89664531  4.47674894  4.89839888  5.58000517  6.05073309
-   6.8103528   7.52948427  7.95527697  8.80804539  9.48500061 10.48468876
-  11.62872887 17.89460945 22.79336739 31.26366806]] 
-
-time spent: 2.1773910522460938 s
-
+python main.py frame0.jpg frame1.jpg 
 ```
 
-The plotted noise curve:
+The noise estimation will be processed at 4 scales for .png or .jpg images, the estimated noise curves are like:
 
-<!-- ![](curve.png | width=100) -->
-
-
-<img src="curve_s0.png" alt="alt text" width="600"/>
+| scale 0 | scale 1 |   
+|:--------------:|:-----------:|
+| <img src="readme_img/curve_s0.png" alt="alt text" width="300"/> |  <img src="readme_img/curve_s1.png" alt="alt text" width="300"/> | 
+| scale 2 | scale 3 |
+| <img src="readme_img/curve_s2.png" alt="alt text" width="300"/> | <img src="readme_img/curve_s3.png" alt="alt text" width="300"/> |
 
 
 
 ## Python API
+
 ``` python
 from src.estimate import estimate_noise_curve
 

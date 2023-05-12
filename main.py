@@ -42,19 +42,16 @@ parser.add_argument('-noise_a', type=float, default=0.2,
                     help='Noise model parameter: a')
 parser.add_argument('-noise_b', type=float, default=0.2,
                     help='Noise model parameter: b')
-parser.add_argument('-multiscale', type=int, default=-1,
-                    help='Number of scales for downscaling. -1 for automatic selection of scales. '
-                    'By default 1 scale is used for raw images and 3 scales are used for processed images.')
-parser.add_argument('-subpx_order', type=int, default=0,
+parser.add_argument('-f_us', type=int, default=0,
                     help='Upsampling scale for subpixel matching')
 args = parser.parse_args()
 
 
-def save_to_txt(intensities, variances, scale):
+def save_to_txt(intensities, variances, save_fname):
     """ Save to a txt file of size (bins, channels * 2)
-    intensities: (channels, bins)
-    variances: (channels, bins)
-    
+    intensities: of size (channels, bins)
+    variances: of size (channels, bins)
+    save_fname: the txt filename
     """
     assert intensities.shape == variances.shape
     channels, bins = intensities.shape
@@ -64,7 +61,7 @@ def save_to_txt(intensities, variances, scale):
         out_data[:, c*2+1] = variances[c, :]
     
     len = int(np.log10(np.abs(out_data).max())) + 4
-    np.savetxt(f"output_s{scale}.txt", out_data, fmt=f'%{len}.3f')
+    np.savetxt(save_fname, out_data, fmt=f'%{len}.3f')
 
 
 def get_extension(fname):
@@ -90,13 +87,10 @@ def main():
     print(args)
     print()
 
-    # args.im_0 = rename_file_by_ext(args.im_0)
-    # args.im_1 = rename_file_by_ext(args.im_1)
-    
     if args.T == -1:
         args.T = args.w + 1
 
-    supported_ext = [".tif", ".tiff", ".dng", ".png", ".jpg", ".jpeg"]
+    supported_ext = [".tif", ".tiff", ".dng"]
 
     # verify the two images are in the same extension
     _, extension_0 = os.path.splitext(args.im_0)
@@ -106,11 +100,10 @@ def main():
     assert extension_0 == extension_1, \
         f"The two input images must be in the same format, but `{extension_0}` and `{extension_1}` were got."
     
-    if args.multiscale == -1:
-        if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
-            args.multiscale = 1 # no need of multiscale estimation for raw images
-        else:
-            args.multiscale = 4
+    if extension_0 == ".tiff" or extension_0 == ".tif" or extension_0 == ".dng":
+        is_raw = True
+    else:
+        is_raw = False
 
     img_0 = utils.read_img(args.im_0, grayscale=args.g)
     img_1 = utils.read_img(args.im_1, grayscale=args.g)
@@ -152,45 +145,14 @@ def main():
     cv2.imwrite(f"noisy_0.png", img_0_v.astype(np.uint8))
     cv2.imwrite(f"noisy_1.png", img_1_v.astype(np.uint8))
 
-
     img_0 = img_0.astype(np.float32)
     img_1 = img_1.astype(np.float32)
-    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.subpx_order, is_raw=True)
+    intensities, variances = estimate_noise_curve_v3(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
 
-    print("###### Output ###### \n")
     num_scale = intensities.shape[0]
     for scale in range(num_scale):
-        save_to_txt(intensities[scale], variances[scale], scale)
-
-        print()
-        print(f"scale {scale} \n")
-        print("intensities:")
-        print(intensities[scale], "\n")
-
-        print("noise variances:")
-        print(variances[scale], "\n")
-        
+        save_to_txt(intensities[scale], variances[scale], f"curve_s{scale}.txt" )
         utils.plot_noise_curve(intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
-
-
-    # for scale in range(args.multiscale):
-
-    #     img_0 = img_0.astype(np.float32)
-    #     img_1 = img_1.astype(np.float32)
-
-    #     intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q * 0.7**scale, bins=args.bins, s=args.s, subpx_order=args.subpx_order, downscale=scale)
-        
-    #     save_to_txt(intensities, variances, scale)
-
-    #     print()
-    #     print(f"scale {scale} \n")
-    #     print("intensities:")
-    #     print(intensities, "\n")
-
-    #     print("noise variances:")
-    #     print(variances, "\n")
-        
-    #     utils.plot_noise_curve(intensities, variances, fname=f"curve_s{scale}.png")
 
     print(f"time spent: {time.time() - start} s")
 
