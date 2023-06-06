@@ -89,7 +89,7 @@ def main():
 
     supported_ext = [".tif", ".tiff", ".dng", ".png", ".jpg", ".jpeg"]
 
-    # verify the two images are in the same extension
+    # verify the two images are in the same format
     _, extension_0 = os.path.splitext(args.im_0)
     _, extension_1 = os.path.splitext(args.im_1)
     assert extension_0 in supported_ext, \
@@ -121,7 +121,9 @@ def main():
     
     img_0 = img_0.astype(np.float32)
     img_1 = img_1.astype(np.float32)
-    intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
+    intensities, variances = estimate_noise_curve_v2(
+        img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s,
+        f_us=args.f_us, is_raw=is_raw)
 
     num_scale = intensities.shape[0]
     for scale in range(num_scale):
