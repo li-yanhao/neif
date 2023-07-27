@@ -27,8 +27,6 @@ import rawpy
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 
-from skimage.util.shape import view_as_blocks
-from scipy.ndimage import gaussian_filter
 import skimage.io as iio
 
 
@@ -123,7 +121,7 @@ def add_noise(img_clean, a, b):
         Image with added noise
     """
 
-    RandomState(MT19937(SeedSequence(123456789)))
+    # RandomState(MT19937(SeedSequence(123456789)))
 
     noise = np.random.normal(0, np.sqrt(a + img_clean * b))
     img_noisy = img_clean + noise

@@ -86,7 +86,7 @@ $ python main.py -bins 24 -q 0.05 -w 9 -th 4 frame0.tiff  frame1.tiff
 
 The extension of the noise estimator that incorporates both subpixel matching and multiscale noise estimation is available in `main_v2.py`. Both raw images in `.tif`, `.tiff` and `.dng` formats and processed images in `.jpg` and `.png` formats are supported. If the input images are raw images, the noise will be estimated only at the original scale. If the input images are processed images, the noise estimation will be processed at 4 scales. The parameter setting is similar as above. Usage:
 
-``` bash
+``` shell
 $ python main_v2.py -h
 
 usage: main_v2.py [-h] [-bins BINS] [-q Q] [-s S] [-w W] [-T T] [-th TH] [-g] [-add_noise] [-noise_a NOISE_A] [-noise_b NOISE_B] [-f_us F_US]
@@ -116,7 +116,7 @@ optional arguments:
 
 For instance, estimate noise curves from two successive processed images:
 
-``` bash
+```shell
 $ python main.py  frame0.jpg  frame1.jpg
 ```
 The noise estimation will be processed at 4 scales. The noise curves at scale `?` are saved to `curve_s?.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. 4 scales will be processed The curves are also plotted in `curve_s?.png`:
