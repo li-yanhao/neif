@@ -6,10 +6,10 @@ bins=16
 w=8
 T=9
 th=3
-search_range=5
-quantile=0.01
-multiscale=-1
-subpx_order=0
+s=5
+q=0.01
+# multiscale=-1
+# subpx_order=0
 # add_noise="-add_noise"
 add_noise=""
 noise_a="0.2"
@@ -25,11 +25,11 @@ do
         w) w=${OPTARG};;
         T) T=${OPTARG};;
         t) th=${OPTARG};;
-        s) search_range=${OPTARG};;
-        q) quantile=${OPTARG};;
+        s) s=${OPTARG};;
+        q) q=${OPTARG};;
         g)  if [ ${OPTARG} = "true" ]
             then
-                grayscale="-grayscale"
+                grayscale="-g"
             elif [ ${OPTARG} = "false" ]
             then
                 grayscale=""
@@ -38,8 +38,8 @@ do
                 exit 1
             fi
             ;;
-        m)  multiscale=${OPTARG};;
-        S)  subpx_order=${OPTARG};;
+        # m)  multiscale=${OPTARG};;
+        # S)  subpx_order=${OPTARG};;
         N)  if [ ${OPTARG} = "true" ]
             then
                 add_noise="-add_noise"
@@ -91,20 +91,15 @@ main=$bin/main.py
 #####################
 command="python $main $img_0 $img_1 \
     -bins $bins \
-    -quantile $quantile  \
+    -q $quantile  \
+    -s $s \
     -w $w \
     -T $T \
     -th $th \
-    -search_range $search_range \
-    -noise_a $noise_a \
-    -noise_b $noise_b \
-    -multiscale $multiscale \
-    -subpx_order $subpx_order \
+    $grayscale \
     $add_noise \
-    $grayscale"
-
-# echo $command
-ls
+    -noise_a $noise_a \
+    -noise_b $noise_b"
 
 $command
 
