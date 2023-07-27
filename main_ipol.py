@@ -29,12 +29,6 @@ def save_to_txt(intensities, variances, save_fname):
     np.savetxt(save_fname, out_data, fmt=f'%{len}.3f')
 
 
-def get_extension(fname):
-    metadata = magic.from_file(fname, mime=True)
-    ext = metadata.split("/")[-1]
-    return ext
-
-
 def restore_file_ext(fname):
     metadata = magic.from_file(fname, mime=True)
     ext = metadata.split("/")[-1]
@@ -47,6 +41,14 @@ def restore_file_ext(fname):
         return new_fname
     else:
         return fname
+
+
+def save_img(path, img):
+    if len(img.shape) == 3:
+        if img.shape[2] == 1:
+            img = img[:, :, 0]
+    img = img.astype(np.uint8)
+    iio.imsave(path, img.astype(np.uint8))
 
 
 def main():
@@ -125,8 +127,8 @@ def main():
         img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
 
     # Save image for visualization in IPOL demo
-    iio.imsave("noisy_0.png", img_0.astype(np.uint8))
-    iio.imsave("noisy_1.png", img_1.astype(np.uint8))
+    save_img("noisy_0.png", img_0)
+    save_img("noisy_1.png", img_1)
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")
