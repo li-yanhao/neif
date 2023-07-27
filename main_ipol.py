@@ -1,14 +1,14 @@
 import time
-from src.estimate import estimate_noise_curve_v2
-
-import src.utils as utils
-import numpy as np
 import os
-import magic
-
-import argparse
 import subprocess
+import argparse
 
+import numpy as np
+import magic
+import skimage.io as iio
+
+from src.estimate import estimate_noise_curve_v2
+import src.utils as utils
 
 
 
@@ -109,7 +109,7 @@ def main():
     assert ext_0 in supported_ext, \
         f"Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support, but `{ext_0}` was found."
     assert ext_0 == ext_1, \
-        f"The two input images must be in the same format, but `{ext_0}` and `{ext_1}` were got."
+        f"The two input images must be in the same format, but `{ext_0}` and `{ext_1}` were found."
     
     if ext_0 == ".tiff" or ext_0 == ".tif" or ext_0 == ".dng":
         is_raw = True
@@ -123,6 +123,10 @@ def main():
     if add_noise:
         img_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
         img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
+
+    # Save image for visualization in IPOL demo
+    iio.imsave("noisy_0.png", img_0.astype(np.uint8))
+    iio.imsave("noisy_1.png", img_1.astype(np.uint8))
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")

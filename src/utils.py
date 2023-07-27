@@ -19,7 +19,6 @@
 
 
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
 import rawpy
 
@@ -71,14 +70,14 @@ def read_img(fname: str, grayscale:bool=False):
                 success = True
             except:
                 pass
-    else:
-        # img = iio.imread(fname, plugin='pil').astype(np.float32)
-
-        # YCbCr space
+        if not success:
+            raise Exception("Failed to read `{}`.".format(fname))
+    elif fname.endswith(".png") or fname.endswith(".jpg") or fname.endswith(".jpeg"):
         img = iio.imread(fname, plugin='pil')
         if np.ndim(img) == 2:
             img = img[..., None]
-
+    else:
+        raise NotImplementedError("Image filename `{}` is invalid. Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support. ".format(fname))
     
     demosaic = False
     if fname.endswith(".dng") or fname.endswith(".tif") or fname.endswith(".tiff"):
