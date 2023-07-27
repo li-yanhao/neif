@@ -22,7 +22,7 @@ WORKDIR $bin
 COPY . .
 
 # compile cython code
-python setup.py build_ext -i
+python3 setup.py build_ext -i
 
 # the execution will happen in the folder /workdir/exec
 # it will be created by IPOL
