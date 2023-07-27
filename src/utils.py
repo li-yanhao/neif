@@ -102,6 +102,22 @@ def read_img(fname: str, grayscale:bool=False):
     return img
 
 
+def save_img(fname, img):
+    """
+    Parameters
+    ----------
+    fname: str
+        Filename of the image to save
+    img: np.ndarray
+        An image of size (C, H, W)
+    """
+    assert len(img.shape) == 3
+    img = np.transpose(img, (1, 2, 0))
+    if img.shape[2] == 1:
+        img = img[:, :, 0]
+    iio.imsave(fname, img.astype(np.uint8))
+
+
 def add_noise(img_clean, a, b):
     """ Add simulated noise to a clean image
 
