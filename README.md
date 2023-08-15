@@ -16,7 +16,7 @@ The code is written in python with a part of cython code for acceleration.
 The program has been tested both on Linux and MacOS in python3.8, and should also work for other versions of python3.
 
 
-Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=77777000249).
+Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=420).
 
 Version 1.2 released on 12/05/2023.
 
