@@ -30,8 +30,7 @@ import skimage.io as iio
 
 
 def read_img(fname: str, grayscale:bool=False):
-    """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of 
-        channels is different:
+    """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of output channels is different:
         - raw image in grayscale: number of channels = 1
         - raw image in color: number of channels = 4
         - processed image in grayscale: number of channels = 1
@@ -102,8 +101,8 @@ def read_img(fname: str, grayscale:bool=False):
     return img
 
 
-def save_img(fname, img):
-    """
+def save_img(prefix, img):
+    """ Save an image for visualizing
     Parameters
     ----------
     fname: str
@@ -112,10 +111,18 @@ def save_img(fname, img):
         An image of size (C, H, W)
     """
     assert len(img.shape) == 3
+    C, H, W = img.shape
     img = np.transpose(img, (1, 2, 0))
-    if img.shape[2] == 1:
+    
+    if C == 4:
+        if np.max(img) > 255:
+            img = img / np.max(img) * 255
+        iio.imsave(prefix + ".png", img.astype(np.uint8))
+        return
+
+    if C == 1:
         img = img[:, :, 0]
-    iio.imsave(fname, img.astype(np.uint8))
+    iio.imsave(prefix + ".png", img.astype(np.uint8))
 
 
 def add_noise(img_clean, a, b):

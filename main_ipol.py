@@ -5,7 +5,6 @@ import argparse
 
 import numpy as np
 import magic
-import skimage.io as iio
 
 from src.estimate import estimate_noise_curve_v2
 import src.utils as utils
@@ -120,8 +119,8 @@ def main():
         img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
 
     # Save image for visualization in IPOL demo
-    utils.save_img("noisy_0.png", img_0)
-    utils.save_img("noisy_1.png", img_1)
+    utils.save_img("noisy_0", img_0)
+    utils.save_img("noisy_1", img_1)
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")
