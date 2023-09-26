@@ -80,6 +80,10 @@ def main():
     print(args)
     print()
 
+    # create two noise curve images as output in case the noise estimation is not processed at high scale
+    subprocess.run("cp $bin/curve_NA.png curve_s1.png" , shell=True)
+    subprocess.run("cp $bin/curve_NA.png curve_s2.png" , shell=True)
+    
     # Convert IPOL parameters
     T = args.w + 1
     if args.grayscale == "true":

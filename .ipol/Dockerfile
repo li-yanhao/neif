@@ -27,9 +27,6 @@ RUN python setup.py build_ext -i
 # the execution will happen in the folder /workdir/exec
 # it will be created by IPOL
 
-RUN cp $bin/curve_NA.png /workdir/exec/curve_s1.png
-RUN cp $bin/curve_NA.png /workdir/exec/curve_s2.png
-
 # some QoL tweaks
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION python
