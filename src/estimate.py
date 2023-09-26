@@ -142,7 +142,7 @@ def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int,  q: float, th: int
     if is_raw:
         num_scale = 1
     else:
-        num_scale = 4
+        num_scale = 3
 
     intensities = np.zeros((num_scale, C, bins))
     variances = np.zeros((num_scale, C, bins))
