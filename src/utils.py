@@ -1,20 +1,20 @@
-# This file is part of the algorithm 
+# This file is part of the algorithm
 # "A Signal-Dependent Video Noise Estimator via Inter-frame Signal Suppression"
 
 
 # Copyright (c) 2022 Yanhao Li
 # yanhao.li@outlook.com
 
-# This program is free software: you can redistribute it and/or modify it under 
-# the terms of the GNU Affero General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
 
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY 
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-# You should have received a copy of the GNU Affero General Public License along 
+# You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
@@ -29,7 +29,7 @@ from numpy.random import RandomState, SeedSequence
 import skimage.io as iio
 
 
-def read_img(fname: str, grayscale:bool=False):
+def read_img(fname: str, grayscale: bool = False):
     """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of output channels is different:
         - raw image in grayscale: number of channels = 1
         - raw image in color: number of channels = 4
@@ -76,8 +76,9 @@ def read_img(fname: str, grayscale:bool=False):
         if np.ndim(img) == 2:
             img = img[..., None]
     else:
-        raise NotImplementedError("Image filename `{}` is invalid. Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support. ".format(fname))
-    
+        raise NotImplementedError(
+            "Image filename `{}` is invalid. Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support. ".format(fname))
+
     demosaic = False
     if fname.endswith(".dng") or fname.endswith(".tif") or fname.endswith(".tiff"):
         if not grayscale:
@@ -113,7 +114,34 @@ def save_img(prefix, img):
     assert len(img.shape) == 3
     C, H, W = img.shape
     img = np.transpose(img, (1, 2, 0))
-    
+
+    if C == 4:
+        if np.max(img) > 255:
+            img = img / np.max(img) * 255
+        iio.imsave(prefix + ".png", img.astype(np.uint8))
+        return
+
+    if C == 1:
+        img = img[:, :, 0]
+    iio.imsave(prefix + ".png", img.astype(np.uint8))
+
+
+def save_noise(prefix, noise):
+    """ Save an image of noise residual for visualizing
+
+    Parameters
+    ----------
+    fname: str
+        Filename of the image to save
+    noise: np.ndarray
+        An image of noise residual of size (C, H, W)
+    """
+
+    assert len(noise.shape) == 3
+    C, H, W = noise.shape
+    noise = np.transpose(noise, (1, 2, 0))
+
+    img = np.abs(noise)
     if C == 4:
         if np.max(img) > 255:
             img = img / np.max(img) * 255
@@ -152,7 +180,7 @@ def add_noise(img_clean, a, b):
     # [0, 255] for this moment
     img_noisy = np.clip(np.round(img_noisy), 0, 255).astype(np.int32)
 
-    return img_noisy
+    return img_noisy, noise
 
 
 def plot_noise_curve(intensities, variances, a=None, b=None, fname=None):

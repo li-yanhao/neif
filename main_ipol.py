@@ -70,7 +70,7 @@ def main():
                         help='True for adding simulated noise')
     parser.add_argument('-noise_a', type=float,
                         help='Noise model parameter: a')
-    parser.add_argument('-noise_b', type=float, default=0.2,
+    parser.add_argument('-noise_b', type=float,
                         help='Noise model parameter: b')
     parser.add_argument('-f_us', type=int,
                         help='Upsampling scale for subpixel matching')
@@ -115,12 +115,15 @@ def main():
     img_1 = utils.read_img(fname_1, grayscale=grayscale)
 
     if add_noise:
-        img_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
-        img_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
+        img_0, noise_0 = utils.add_noise(img_0, args.noise_a, args.noise_b)
+        img_1, noise_1 = utils.add_noise(img_1, args.noise_a, args.noise_b)
+        # utils.save_noise("noise_0", noise_0)
+        # utils.save_noise("noise_1", noise_1)
 
     # Save image for visualization in IPOL demo
     utils.save_img("noisy_0", img_0)
     utils.save_img("noisy_1", img_1)
+
 
     if img_0.shape != img_1.shape: 
         print("Error: The two input images should have the same size and the same channel")
