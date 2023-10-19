@@ -116,6 +116,12 @@ def save_img(prefix, img):
     img = np.transpose(img, (1, 2, 0))
 
     if C == 4:
+        # we assume the bayer pattern is BGGR, and take only one G channel
+        img_rgb = np.zeros((H, W, 3))
+        img_rgb[:, :, 0] = img[:, :, 3]
+        img_rgb[:, :, 1] = img[:, :, 1]
+        img_rgb[:, :, 2] = img[:, :, 0]
+        img = img_rgb
         if np.max(img) > 255:
             img = img / np.max(img) * 255
         iio.imsave(prefix + ".png", img.astype(np.uint8))

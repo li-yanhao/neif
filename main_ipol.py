@@ -10,7 +10,6 @@ from src.estimate import estimate_noise_curve_v2
 import src.utils as utils
 
 
-
 def save_to_txt(intensities, variances, save_fname):
     """ Save to a txt file of size (bins, channels * 2)
     intensities: of size (channels, bins)
@@ -23,7 +22,7 @@ def save_to_txt(intensities, variances, save_fname):
     for c in range(channels):
         out_data[:, c*2] = intensities[c, :]
         out_data[:, c*2+1] = variances[c, :]
-    
+
     len = int(np.log10(np.abs(out_data).max())) + 4
     np.savetxt(save_fname, out_data, fmt=f'%{len}.3f')
 
@@ -42,11 +41,10 @@ def restore_file_ext(fname):
         return fname
 
 
-
 def main():
     parser = argparse.ArgumentParser(description='Video Signal-Dependent Noise Estimation via Inter-frame Prediction.\n'
-                                    'This script is for IPOL demo use.\n'
-                                    '(c) 2022 Yanhao Li. Under license GNU AGPL.')
+                                     'This script is for IPOL demo use.\n'
+                                     '(c) 2022 Yanhao Li. Under license GNU AGPL.')
 
     parser.add_argument('im_0', type=str,
                         help='First frame filename')
@@ -76,14 +74,14 @@ def main():
                         help='Upsampling scale for subpixel matching')
     args = parser.parse_args()
 
-    print("Parameters:")
-    print(args)
-    print()
+    # print("Parameters:")
+    # print(args)
+    # print()
 
     # create two noise curve images as output in case the noise estimation is not processed at high scale
-    subprocess.run("cp $bin/curve_NA.png curve_s1.png" , shell=True)
-    subprocess.run("cp $bin/curve_NA.png curve_s2.png" , shell=True)
-    
+    subprocess.run("cp $bin/curve_NA.png curve_s1.png", shell=True)
+    subprocess.run("cp $bin/curve_NA.png curve_s2.png", shell=True)
+
     # Convert IPOL parameters
     T = args.w + 1
     if args.grayscale == "true":
@@ -108,12 +106,11 @@ def main():
         f"Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support, but `{ext_0}` was found."
     assert ext_0 == ext_1, \
         f"The two input images must be in the same format, but `{ext_0}` and `{ext_1}` were found."
-    
+
     if ext_0 == ".tiff" or ext_0 == ".tif" or ext_0 == ".dng":
         is_raw = True
     else:
         is_raw = False
-
 
     img_0 = utils.read_img(fname_0, grayscale=grayscale)
     img_1 = utils.read_img(fname_1, grayscale=grayscale)
@@ -125,26 +122,37 @@ def main():
         # utils.save_noise("noise_1", noise_1)
 
     # Save image for visualization in IPOL demo
+    # not working for raw images (uint16)
     utils.save_img("noisy_0", img_0)
     utils.save_img("noisy_1", img_1)
 
-
-    if img_0.shape != img_1.shape: 
+    if img_0.shape != img_1.shape:
         print("Error: The two input images should have the same size and the same channel")
         quit()
 
     start = time.time()
-    
+
     img_0 = img_0.astype(np.float32)
     img_1 = img_1.astype(np.float32)
-    intensities, variances = estimate_noise_curve_v2(img_0, img_1, w=args.w, T=T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
+    intensities, variances = estimate_noise_curve_v2(
+        img_0, img_1, w=args.w, T=T, th=args.th, q=args.q, bins=args.bins, s=args.s, f_us=args.f_us, is_raw=is_raw)
 
     num_scale = intensities.shape[0]
     for scale in range(num_scale):
-        save_to_txt(intensities[scale], variances[scale], f"curve_s{scale}.txt" )
-        utils.plot_noise_curve(intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
+        save_to_txt(intensities[scale],
+                    variances[scale], f"curve_s{scale}.txt")
+        utils.plot_noise_curve(
+            intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
+        print()
+        print("At scale {}:".format(scale))
+        print("intensities:")
+        print(intensities[scale])
+        print("variances:")
+        print(variances[scale])
+        print()
 
     print(f"time spent: {time.time() - start} s")
+
 
 if __name__ == "__main__":
     main()
