@@ -1,25 +1,24 @@
-# This file is part of the algorithm 
+# This file is part of the algorithm
 # "A Signal-Dependent Video Noise Estimator via Inter-frame Signal Suppression"
 
 
 # Copyright (c) 2022 Yanhao Li
 # yanhao.li@outlook.com
 
-# This program is free software: you can redistribute it and/or modify it under 
-# the terms of the GNU Affero General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
 
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY 
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-# You should have received a copy of the GNU Affero General Public License along 
+# You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
 import rawpy
 
@@ -27,14 +26,11 @@ import rawpy
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 
-from skimage.util.shape import view_as_blocks
-from scipy.ndimage import gaussian_filter
 import skimage.io as iio
 
 
-def read_img(fname: str, grayscale:bool=False):
-    """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of 
-        channels is different:
+def read_img(fname: str, grayscale: bool = False):
+    """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of output channels is different:
         - raw image in grayscale: number of channels = 1
         - raw image in color: number of channels = 4
         - processed image in grayscale: number of channels = 1
@@ -73,15 +69,16 @@ def read_img(fname: str, grayscale:bool=False):
                 success = True
             except:
                 pass
-    else:
-        # img = iio.imread(fname, plugin='pil').astype(np.float32)
-
-        # YCbCr space
+        if not success:
+            raise Exception("Failed to read `{}`.".format(fname))
+    elif fname.endswith(".png") or fname.endswith(".jpg") or fname.endswith(".jpeg"):
         img = iio.imread(fname, plugin='pil')
         if np.ndim(img) == 2:
             img = img[..., None]
+    else:
+        raise NotImplementedError(
+            "Image filename `{}` is invalid. Only `.tif`, `.tiff`, `.dng`, `.png`, `.jpg` and `.jpeg` formats are support. ".format(fname))
 
-    
     demosaic = False
     if fname.endswith(".dng") or fname.endswith(".tif") or fname.endswith(".tiff"):
         if not grayscale:
@@ -105,6 +102,63 @@ def read_img(fname: str, grayscale:bool=False):
     return img
 
 
+def save_img(prefix, img):
+    """ Save an image for visualizing
+    Parameters
+    ----------
+    fname: str
+        Filename of the image to save
+    img: np.ndarray
+        An image of size (C, H, W)
+    """
+    assert len(img.shape) == 3
+    C, H, W = img.shape
+    img = np.transpose(img, (1, 2, 0))
+
+    if C == 4:
+        # we assume the bayer pattern is BGGR, and take only one G channel
+        img_rgb = np.zeros((H, W, 3))
+        img_rgb[:, :, 0] = img[:, :, 3]
+        img_rgb[:, :, 1] = img[:, :, 1]
+        img_rgb[:, :, 2] = img[:, :, 0]
+        img = img_rgb
+        if np.max(img) > 255:
+            img = img / np.max(img) * 255
+        iio.imsave(prefix + ".png", img.astype(np.uint8))
+        return
+
+    if C == 1:
+        img = img[:, :, 0]
+    iio.imsave(prefix + ".png", img.astype(np.uint8))
+
+
+def save_noise(prefix, noise):
+    """ Save an image of noise residual for visualizing
+
+    Parameters
+    ----------
+    fname: str
+        Filename of the image to save
+    noise: np.ndarray
+        An image of noise residual of size (C, H, W)
+    """
+
+    assert len(noise.shape) == 3
+    C, H, W = noise.shape
+    noise = np.transpose(noise, (1, 2, 0))
+
+    img = np.abs(noise)
+    if C == 4:
+        if np.max(img) > 255:
+            img = img / np.max(img) * 255
+        iio.imsave(prefix + ".png", img.astype(np.uint8))
+        return
+
+    if C == 1:
+        img = img[:, :, 0]
+    iio.imsave(prefix + ".png", img.astype(np.uint8))
+
+
 def add_noise(img_clean, a, b):
     """ Add simulated noise to a clean image
 
@@ -123,7 +177,7 @@ def add_noise(img_clean, a, b):
         Image with added noise
     """
 
-    RandomState(MT19937(SeedSequence(123456789)))
+    # RandomState(MT19937(SeedSequence(123456789)))
 
     noise = np.random.normal(0, np.sqrt(a + img_clean * b))
     img_noisy = img_clean + noise
@@ -132,7 +186,7 @@ def add_noise(img_clean, a, b):
     # [0, 255] for this moment
     img_noisy = np.clip(np.round(img_noisy), 0, 255).astype(np.int32)
 
-    return img_noisy
+    return img_noisy, noise
 
 
 def plot_noise_curve(intensities, variances, a=None, b=None, fname=None):
