@@ -22,14 +22,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rawpy
 
-# Set random state for reproducible results
-from numpy.random import MT19937
-from numpy.random import RandomState, SeedSequence
-
 import skimage.io as iio
 
 
-def read_img(fname: str, grayscale: bool = False):
+def read_img(fname: str, grayscale: bool = False) -> np.ndarray:
     """ Read image from a file name, output a multi-channel image. Depending on the nature of the input image, the number of output channels is different:
         - raw image in grayscale: number of channels = 1
         - raw image in color: number of channels = 4
@@ -102,7 +98,7 @@ def read_img(fname: str, grayscale: bool = False):
     return img
 
 
-def save_img(prefix, img):
+def save_img(prefix: str, img: np.ndarray) -> None:
     """ Save an image for visualizing
     Parameters
     ----------
@@ -132,13 +128,13 @@ def save_img(prefix, img):
     iio.imsave(prefix + ".png", img.astype(np.uint8))
 
 
-def save_noise(prefix, noise):
+def save_noise(prefix: str, noise: np.ndarray) -> None:
     """ Save an image of noise residual for visualizing
 
     Parameters
     ----------
-    fname: str
-        Filename of the image to save
+    prefix: str
+        The filename without extension for saving
     noise: np.ndarray
         An image of noise residual of size (C, H, W)
     """
@@ -177,8 +173,6 @@ def add_noise(img_clean, a, b):
         Image with added noise
     """
 
-    # RandomState(MT19937(SeedSequence(123456789)))
-
     noise = np.random.normal(0, np.sqrt(a + img_clean * b))
     img_noisy = img_clean + noise
 
@@ -189,13 +183,13 @@ def add_noise(img_clean, a, b):
     return img_noisy, noise
 
 
-def plot_noise_curve(intensities, variances, a=None, b=None, fname=None):
+def plot_noise_curve(intensities:np.ndarray, variances:np.ndarray, a:float=None, b:float=None, fname:str=None) -> None:
     """ Plot the noise curve {means <=> variances}
         and save it to an image file
 
     Parameters
     ----------
-    intensities : numpy
+    intensities : np.ndarray
         Means of bins for multiple channels, in size (channels, bins)
     variances : numpy.ndarray
         Variances of bins for multiple channels, in size (channels, bins)
@@ -216,7 +210,6 @@ def plot_noise_curve(intensities, variances, a=None, b=None, fname=None):
     px = 1/plt.rcParams['figure.dpi']  # pixel in inches
     plt.subplots(figsize=(800*px, 600*px))
     plt.clf()
-    # plt.title('Noise curves from frame discrepancy', fontsize=20)
     for channel in range(channels):
         plt.plot(intensities[channel], variances[channel],
                  '-o', label='var of channel ' + str(channel))

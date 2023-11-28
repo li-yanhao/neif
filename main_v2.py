@@ -1,14 +1,13 @@
-
-import time
-from src.estimate import estimate_noise_curve_v2
-
-import src.utils as utils
-import numpy as np
+import argparse
 import os
+import subprocess
+import time
+
+import numpy as np
 import magic
 
-import argparse
-import subprocess
+from src.estimate import estimate_noise_curve_v2
+import src.utils as utils
 
 
 parser = argparse.ArgumentParser(description='Video Signal-Dependent Noise Estimation via Inter-frame Prediction. '
@@ -129,6 +128,7 @@ def main():
     for scale in range(num_scale):
         save_to_txt(intensities[scale], variances[scale], f"curve_s{scale}.txt" )
         utils.plot_noise_curve(intensities[scale], variances[scale], fname=f"curve_s{scale}.png")
+        print(f"The estimated noise curves at scale {scale} are saved in `curve_s{scale}.txt` and plotted in `curve_s{scale}.png`.")
 
     print(f"time spent: {time.time() - start} s")
 

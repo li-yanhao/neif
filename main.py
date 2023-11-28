@@ -1,12 +1,11 @@
-
-import time
-from src.estimate import estimate_noise_curve
-
-import src.utils as utils
-import numpy as np
-import os
-
 import argparse
+import os
+import time
+
+import numpy as np
+
+from src.estimate import estimate_noise_curve
+import src.utils as utils
 
 
 parser = argparse.ArgumentParser(description='Video Signal-Dependent Noise Estimation via Inter-frame Prediction. '
@@ -40,7 +39,7 @@ parser.add_argument('-noise_b', type=float, default=0.2,
 args = parser.parse_args()
 
 
-def save_to_txt(intensities, variances, save_fname):
+def save_to_txt(intensities, variances, save_fname) -> None:
     """ Save to a txt file of size (bins, channels * 2)
     intensities: of size (channels, bins)
     variances: of size (channels, bins)
@@ -58,14 +57,12 @@ def save_to_txt(intensities, variances, save_fname):
 
 
 def main():
-    
-
-    if args.T == -1:
-        args.T = args.w + 1
-
     print("Parameters:")
     print(args)
     print()
+    
+    if args.T == -1:
+        args.T = args.w + 1
 
     supported_ext = [".tif", ".tiff", ".dng"]
 
@@ -91,7 +88,6 @@ def main():
     if args.T > 2 * args.w - 3:
         print("Error: Frequency separator T and block size w should satisfy T<=2*w-3")
         quit()
-        
 
     start = time.time()
 
@@ -99,8 +95,11 @@ def main():
     img_1 = img_1.astype(np.float32)
     intensities, variances = estimate_noise_curve(img_0, img_1, w=args.w, T=args.T, th=args.th, q=args.q, bins=args.bins, s=args.s)
 
-    save_to_txt(intensities, variances, f"curve_s0.txt" )
+    save_to_txt(intensities, variances, f"curve_s0.txt")
+
     utils.plot_noise_curve(intensities, variances, fname=f"curve_s0.png")
+    print("The estimated noise curves are saved in `curve_s0.txt` and plotted in `curve_s0.png`")
+    print()
 
     print(f"time spent: {time.time() - start} s")
 

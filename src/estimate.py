@@ -18,13 +18,15 @@
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-import numpy as np
-import matching as M
+from typing import Tuple
 
+import numpy as np
 from skimage.util import view_as_windows, view_as_blocks
 
+import matching as M
 
-def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bins: int, s: int):
+
+def estimate_noise_curve(img_ref:np.ndarray, img_mov:np.ndarray, w: int, T: int, th: int, q: float, bins: int, s: int) -> Tuple[np.ndarray, np.ndarray]:
     """ Main function: estimate noise curves from two successive images
         (See Algo. 7 in the paper)
 
@@ -100,7 +102,7 @@ def estimate_noise_curve(img_ref, img_mov, w: int, T: int, th: int, q: float, bi
     return intensities, variances
 
 
-def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int,  q: float, th: int, s: int, bins: int, f_us: int = 0, is_raw:bool=0):
+def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int,  q: float, th: int, s: int, bins: int, f_us: int = 0, is_raw:bool=0) -> Tuple[np.ndarray, np.ndarray]:
     """ Main function: estimate noise curves from two successive images
         
 
@@ -221,7 +223,7 @@ def estimate_noise_curve_v2(img_ref, img_mov, w: int, T: int,  q: float, th: int
     return intensities, variances
 
 
-def compute_median_curve(in_curves):
+def compute_median_curve(in_curves:np.ndarray) -> np.ndarray:
     """ Compute the median curve given a set of curves
         (See Algo. 8 in the paper)
 

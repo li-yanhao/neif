@@ -18,7 +18,7 @@ The program has been tested both on Linux and MacOS in python3.8, and should als
 
 Online demo is available on [IPOL](https://ipolcore.ipol.im/demo/clientApp/demo.html?id=420).
 
-Version 1.2 released on 12/05/2023.
+Version 1.2.1 released on 11/29/2023.
 
 Contact: Yanhao Li ( yanhao {dot} li {at} outlook {dot} com )
 
@@ -28,8 +28,8 @@ Contact: Yanhao Li ( yanhao {dot} li {at} outlook {dot} com )
 
 ``` bash
 # configure python environment
-conda create --name myenv python=3.8
-conda activate myenv
+conda create --name neif python=3.8
+conda activate neif
 pip install -r requirements.txt
 
 # compile cython code
@@ -69,7 +69,7 @@ optional arguments:
 For instance, estimate noise curves from two successive raw frames:
 
 ``` bash
-$ python main.py  frame0.tiff  frame1.tiff
+$ python main.py frame0.tiff frame1.tiff
 ```
 The noise curves are saved to `curve_s0.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. The curves are also plotted in `curve_s0.png`:
 
@@ -78,13 +78,13 @@ The noise curves are saved to `curve_s0.txt` with B rows and 2C columns, where t
 Or estimate noise curves with 24 bins, 5% of block pairs, block size at 9, thickness of ring at 4:
 
 ``` bash
-$ python main.py -bins 24 -q 0.05 -w 9 -th 4 frame0.tiff  frame1.tiff 
+$ python main.py -bins 24 -q 0.05 -w 9 -th 4 frame0.tiff frame1.tiff 
 ```
 
 
 ## Extended noise estimator
 
-The extension of the noise estimator that incorporates both subpixel matching and multiscale noise estimation is available in `main_v2.py`. Both raw images in `.tif`, `.tiff` and `.dng` formats and processed images in `.jpg` and `.png` formats are supported. If the input images are raw images, the noise will be estimated only at the original scale. If the input images are processed images, the noise estimation will be processed at 4 scales. The parameter setting is similar as above. Usage:
+The extension of the noise estimator that incorporates both subpixel matching and multiscale noise estimation is available in `main_v2.py`. Either raw images in `.tif`, `.tiff` and `.dng` formats or processed images in `.jpg` and `.png` formats are supported. If the input images are raw images, the noise will be estimated only at the original scale. If the input images are processed images, the noise estimation will be processed at 4 scales. The parameter setting is similar as above. Usage:
 
 ``` shell
 $ python main_v2.py -h
@@ -117,7 +117,7 @@ optional arguments:
 For instance, estimate noise curves from two successive processed images:
 
 ```shell
-$ python main.py  frame0.jpg  frame1.jpg
+$ python main.py frame0.jpg frame1.jpg
 ```
 The noise estimation will be processed at 4 scales. The noise curves at scale `?` are saved to `curve_s?.txt` with B rows and 2C columns, where the first C columns store the intensities of C channels and the last C columns store the noise variances, and each row is for one bin. 4 scales will be processed The curves are also plotted in `curve_s?.png`:
 
@@ -134,7 +134,7 @@ The noiseless synthetic drone videos mentioned in the paper are now available in
 
 
 # Citation
-If you use this code for your research, please cite our paper.
+If you use this code for your research, please cite our paper:
 ```
 @inproceedings{li2022video,
   title={Video Signal-Dependent Noise Estimation via Inter-Frame Prediction},
@@ -143,5 +143,14 @@ If you use this code for your research, please cite our paper.
   pages={1406--1410},
   year={2022},
   organization={IEEE}
+}
+
+@article{li2023signal,
+  title={A Signal-dependent Video Noise Estimator Via Inter-frame Signal Suppression},
+  author={Li, Yanhao and Gardella, Marina and Bammey, Quentin and Nikoukhah, Tina and von Gioi, Rafael Grompone and Colom, Miguel and Morel, Jean-Michel},
+  journal={Image Processing On Line},
+  volume={13},
+  pages={280--313},
+  year={2023}
 }
 ```

@@ -38,13 +38,7 @@ ctypedef float T_t
 T = np.float32
 
 cdef extern from "limits.h":
-    # cdef int INT32_MAX
-    # cdef unsigned int UINT32_MAX
     cdef long INT64_MAX
-    # cdef unsigned long UINT64_MAX
-
-# cdef extern from "float.h":
-    # cdef double DBL_MAX
 
 ########################################
 
@@ -287,57 +281,6 @@ def select_block_pairs(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] 
     return pos_selected_ref, pos_selected_mov
 
 
-# @cython.boundscheck(False)
-# @cython.wraparound(False)
-# def select_block_pairs(np.ndarray[np.float32_t, ndim=3] blks_ref, np.ndarray[np.float32_t, ndim=3] blks_mov, int T, float q):
-#     """ Select a quantile of block pairs whose difference have the least low-frequency energies
-#         (See Algo. 4 in the paper)
-
-
-#     Parameters
-#     ----------
-#     blks_ref: np.ndarray
-#         Blocks in reference image of size (N, w, w)
-#     blks_mov: np.ndarray
-#         Blocks in moving image of size (N, w, w)
-#     T: int
-#         Threshold for separating the entries for low and high frequency DCT coefficents
-#     q: float
-#         quantile of selected blocks
-
-#     Returns
-#     -------
-#     pos_selected_ref: np.ndarray
-#         Selected blocks in reference image, of size (M, w, w),
-#         with M = floor(N * q)
-#     pos_selected_mov: np.ndarray
-#         Selected blocks in moving image, of size (M, w, w)
-#     """
-
-#     cdef int N = blks_mov.shape[0]
-#     cdef int w = blks_mov.shape[1]
-
-#     cdef np.ndarray E = np.zeros(N, dtype=np.float32)
-#     cdef np.float32_t[:] E_view = E
-    
-#     dct_blks_diff = dctn(blks_ref - blks_mov, axes=(-1,-2), norm='ortho', workers=8) # (N, w, w)
-
-#     cdef np.float32_t[:, :, :] dct_blks_diff_view = dct_blks_diff
-#     cdef np.float32_t[:, :] dct_blk_view
-
-#     cdef int i
-#     for i in range(N):
-#         dct_blk_view = dct_blks_diff_view[i]
-#         E_view[i] = compute_low_freq_energy(dct_blk_view, w, T)
-
-#     I = np.argsort(E)[:int(N * q)]
-
-#     blks_selected_ref = blks_ref[I]
-#     blks_selected_mov = blks_mov[I]
-
-#     return blks_selected_ref, blks_selected_mov
-
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, \
@@ -390,10 +333,12 @@ def partition(np.ndarray[T_t, ndim=2] img_ref, np.ndarray[T_t, ndim=2] img_mov, 
 
 np.import_array()
 
+
 cdef extern from "helper.h":
     void find_best_matching(
             float *img_ref, float *img_mov, np.uint16_t *pos_ref, np.uint16_t *pos_mov_init, \
             int H, int W, int N, int w, int th,int ups_factor, np.uint16_t *pos_mov_final)
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -641,7 +586,6 @@ def remove_saturated_obsolete(np.ndarray img_ref, np.ndarray img_mov,
     return pos_ref[valid_mask], pos_mov[valid_mask]
 
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
@@ -686,7 +630,6 @@ def remove_saturated(np.ndarray img_ref, np.ndarray img_mov,
     valid_mask = valid_mask_ref & valid_mask_mov
 
     return pos_ref[valid_mask], pos_mov[valid_mask]
-
 
 
 @cython.boundscheck(False)
